@@ -1,0 +1,20 @@
+[Unit]
+Description=Console de pilotage quotidien (Hono + SQLite)
+After=network.target
+
+[Service]
+Type=simple
+# Adapter le chemin à l'emplacement réel du dépôt sur le serveur.
+WorkingDirectory=/opt/console-pilotage
+ExecStart=/usr/bin/node server/dist/index.js
+Environment=NODE_ENV=production
+Environment=PORT=3001
+Environment=DB_PATH=/opt/console-pilotage/data/console.db
+Restart=on-failure
+RestartSec=3
+# Utilisateur dédié recommandé (à créer au préalable).
+User=console
+Group=console
+
+[Install]
+WantedBy=multi-user.target

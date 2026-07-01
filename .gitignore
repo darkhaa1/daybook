@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+client/dist/
+server/dist/
+
+# Database & runtime data (à inclure dans les backups, PAS dans git)
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# Logs
+*.log
+
+# OS / éditeur
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

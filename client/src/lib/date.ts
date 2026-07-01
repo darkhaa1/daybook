@@ -1,0 +1,37 @@
+// Utilitaires de date en heure locale (jour ISO YYYY-MM-DD).
+
+export function todayISO(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+// Lundi de la semaine contenant `isoDate` (semaine lundi -> dimanche).
+export function mondayOf(isoDate: string): string {
+  const [y, m, d] = isoDate.split('-').map(Number) as [number, number, number];
+  const dt = new Date(y, m - 1, d);
+  const weekday = (dt.getDay() + 6) % 7; // 0 = lundi
+  dt.setDate(dt.getDate() - weekday);
+  const yy = dt.getFullYear();
+  const mm = String(dt.getMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getDate()).padStart(2, '0');
+  return `${yy}-${mm}-${dd}`;
+}
+
+// Format d'affichage JJ.MM.AAAA (style cartouche de la maquette).
+export function formatBlueprint(isoDate: string): string {
+  const [y, m, d] = isoDate.split('-');
+  return `${d}.${m}.${y}`;
+}
+
+// Format lisible "lun. 1 juil." pour les intitulés de semaine.
+export function formatShort(isoDate: string): string {
+  const [y, m, d] = isoDate.split('-').map(Number) as [number, number, number];
+  return new Date(y, m - 1, d).toLocaleDateString('fr-FR', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
+}
