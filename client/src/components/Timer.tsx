@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
-import { CATEGORIES } from '@shared';
-import type { Category, FocusSession } from '../types.ts';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { FocusSession } from '../types.ts';
 import { CategorySelect } from './CategorySelect.tsx';
+import { useCategories } from '../context/CategoriesContext.tsx';
 
 const WORK = 25 * 60;
 const BREAK = 5 * 60;
@@ -11,7 +11,7 @@ type Mode = 'focus' | 'break';
 
 interface Props {
   sessions: FocusSession[];
-  onSessionComplete: (category: Category, durationSec: number) => void;
+  onSessionComplete: (category: string, durationSec: number) => void;
 }
 
 function fmt(total: number): string {
@@ -23,10 +23,19 @@ function fmt(total: number): string {
 }
 
 export function Timer({ sessions, onSessionComplete }: Props) {
-  const [category, setCategory] = useState<Category>('FORM');
+  const { active, all, colorOf } = useCategories();
+  const [category, setCategory] = useState('');
   const [mode, setMode] = useState<Mode>('focus');
   const [remaining, setRemaining] = useState(WORK);
   const [running, setRunning] = useState(false);
+
+  // Sélectionne la première catégorie active dès qu'elle est disponible.
+  useEffect(() => {
+    if (!category && active.length > 0) {
+      const first = active[0];
+      if (first) setCategory(first.key);
+    }
+  }, [active, category]);
 
   // Refs pour lire les valeurs courantes dans le callback d'intervalle.
   const modeRef = useRef(mode);
@@ -69,10 +78,19 @@ export function Timer({ sessions, onSessionComplete }: Props) {
   const dashoffset = CIRC * (1 - frac);
 
   // Compte des sessions focus du jour par catégorie (données réelles).
-  const tally = new Map<Category, number>();
+  const tally = new Map<string, number>();
   for (const s of sessions) {
     tally.set(s.category, (tally.get(s.category) ?? 0) + 1);
   }
+
+  // Catégories actives + toute catégorie ayant une session aujourd'hui (même archivée depuis).
+  const tallyKeys = useMemo(() => {
+    const activeKeys = active.map((c) => c.key);
+    const sessionKeys = sessions.map((s) => s.category);
+    const merged = Array.from(new Set([...activeKeys, ...sessionKeys]));
+    const orderOf = new Map(all.map((c, i) => [c.key, i]));
+    return merged.sort((a, b) => (orderOf.get(a) ?? 999) - (orderOf.get(b) ?? 999));
+  }, [active, all, sessions]);
 
   return (
     <section className="panel timer-wrap">
@@ -108,13 +126,12 @@ export function Timer({ sessions, onSessionComplete }: Props) {
             <line x1="32.5" y1="139" x2="23.8" y2="144" />
             <line x1="22" y1="100" x2="12" y2="100" />
             <line x1="32.5" y1="61" x2="23.8" y2="56" />
-            <line x1="61" y1="32.5" x2="56" y2="23.8" />
           </g>
         </svg>
         <div className="dial-readout">
           <div className="dial-time">{fmt(remaining)}</div>
           <div className="dial-mode">
-            {mode === 'focus' ? 'Focus' : 'Pause'} — {category}
+            {mode === 'focus' ? 'Focus' : 'Pause'} — {category || '—'}
           </div>
         </div>
       </div>
@@ -124,8 +141,14 @@ export function Timer({ sessions, onSessionComplete }: Props) {
         <CategorySelect id="active-cat" value={category} onChange={setCategory} />
       </div>
 
+      {active.length === 0 && (
+        <p className="muted-note">
+          Aucune catégorie active — gérez vos catégories dans l'onglet Catégories.
+        </p>
+      )}
+
       <div className="timer-controls">
-        <button type="button" className="btn primary" onClick={toggle}>
+        <button type="button" className="btn primary" onClick={toggle} disabled={!category}>
           {running ? 'Pause' : 'Démarrer'}
         </button>
         <button type="button" className="btn" onClick={reset}>
@@ -134,13 +157,15 @@ export function Timer({ sessions, onSessionComplete }: Props) {
       </div>
 
       <div className="sessions-tally">
-        {CATEGORIES.map((cat) => {
-          const n = tally.get(cat) ?? 0;
+        {tallyKeys.map((key) => {
+          const n = tally.get(key) ?? 0;
           return (
-            <div className="row" key={cat}>
-              <span>{cat}</span>
+            <div className="row" key={key}>
+              <span>{key}</span>
               {n > 0 ? (
-                <span className="dots">{'●'.repeat(n)}</span>
+                <span className="dots" style={{ color: colorOf(key) }}>
+                  {'●'.repeat(n)}
+                </span>
               ) : (
                 <span style={{ opacity: 0.4 }}>—</span>
               )}

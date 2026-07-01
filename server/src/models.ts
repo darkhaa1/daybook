@@ -36,6 +36,18 @@ export interface GoalRow {
   created_at: string;
 }
 
+export interface CategoryRow {
+  id: number;
+  key: string;
+  label: string;
+  color: string;
+  sort_order: number;
+  is_archived: number;
+  created_at: string;
+  // Colonne calculée par la requête (EXISTS corrélé), pas une colonne SQL réelle.
+  in_use: number;
+}
+
 // --- Modèles API (done en booléen, catégories typées) ---
 
 export interface Task {
@@ -69,6 +81,17 @@ export interface Goal {
   period: Period;
   target_hours: number | null;
   done: boolean;
+  created_at: string;
+}
+
+export interface CategoryDef {
+  id: number;
+  key: string;
+  label: string;
+  color: string;
+  sort_order: number;
+  is_archived: boolean;
+  in_use: boolean;
   created_at: string;
 }
 
@@ -110,6 +133,19 @@ export function toGoal(row: GoalRow): Goal {
     period: row.period as Period,
     target_hours: row.target_hours,
     done: row.done === 1,
+    created_at: row.created_at,
+  };
+}
+
+export function toCategoryDef(row: CategoryRow): CategoryDef {
+  return {
+    id: row.id,
+    key: row.key,
+    label: row.label,
+    color: row.color,
+    sort_order: row.sort_order,
+    is_archived: row.is_archived === 1,
+    in_use: row.in_use === 1,
     created_at: row.created_at,
   };
 }

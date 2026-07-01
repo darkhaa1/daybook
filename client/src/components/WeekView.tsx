@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import type { Goal, WeekAggregation } from '../types.ts';
 import { api, ApiError } from '../lib/api.ts';
 import { mondayOf, formatShort } from '../lib/date.ts';
+import { useCategories } from '../context/CategoriesContext.tsx';
+import { CategoryDot } from './CategoryDot.tsx';
 
 function formatHours(hours: number): string {
   const h = Math.floor(hours);
@@ -10,6 +12,7 @@ function formatHours(hours: number): string {
 }
 
 export function WeekView({ referenceDay }: { referenceDay: string }) {
+  const { labelOf, colorOf } = useCategories();
   const start = mondayOf(referenceDay);
   const [week, setWeek] = useState<WeekAggregation | null>(null);
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -72,11 +75,16 @@ export function WeekView({ referenceDay }: { referenceDay: string }) {
             return (
               <div key={cat.category}>
                 <div className="bar-row">
-                  <span className="bar-label">{cat.category}</span>
+                  <span className="bar-label">
+                    <CategoryDot categoryKey={cat.category} /> {cat.category}
+                  </span>
                   <div className="bar-track">
                     <div
                       className={`bar-fill${warn ? ' warn' : ''}`}
-                      style={{ width: `${width}%` }}
+                      style={{
+                        width: `${width}%`,
+                        background: warn ? undefined : colorOf(cat.category),
+                      }}
                     />
                   </div>
                   <span className="bar-value">{formatHours(cat.hours)}</span>
@@ -106,7 +114,7 @@ export function WeekView({ referenceDay }: { referenceDay: string }) {
                 <div className="progress-label">
                   <span>
                     {goal.title}
-                    {goal.category ? ` · ${goal.category}` : ''}
+                    {goal.category ? ` · ${labelOf(goal.category)}` : ''}
                   </span>
                   <span>
                     {formatHours(actual)} / {formatHours(target)}

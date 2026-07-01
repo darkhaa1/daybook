@@ -54,3 +54,36 @@ export interface WeekAggregation {
   totalSeconds: number;
   categories: WeekCategory[];
 }
+
+export interface CategoryDef {
+  id: number;
+  key: Category;
+  label: string;
+  color: string;
+  sort_order: number;
+  is_archived: boolean;
+  in_use: boolean;
+  created_at: string;
+}
+
+export interface HistoryDay {
+  day: string;
+  tasksDone: number;
+  tasksTotal: number;
+  focusHours: number;
+  hasReview: boolean;
+  hoursByCategory: Record<string, number>;
+}
+
+export interface HistorySummary {
+  start: string;
+  end: string;
+  activeDays: number;
+  tasksDone: number;
+  categories: WeekCategory[];
+}
+
+export interface HistoryResponse {
+  days: HistoryDay[];
+  summary: HistorySummary;
+}

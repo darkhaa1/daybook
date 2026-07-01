@@ -2,22 +2,27 @@ import { useEffect, useState } from 'react';
 import { TodayView } from './components/TodayView.tsx';
 import { WeekView } from './components/WeekView.tsx';
 import { GoalsView } from './components/GoalsView.tsx';
+import { CategoriesView } from './components/CategoriesView.tsx';
+import { HistoryView } from './components/HistoryView.tsx';
 import { todayISO, formatBlueprint } from './lib/date.ts';
 
-type Tab = 'today' | 'week' | 'goals';
+type Tab = 'today' | 'week' | 'goals' | 'categories' | 'history';
+
+const TAB_IDS: Tab[] = ['today', 'week', 'goals', 'categories', 'history'];
 
 const TABS: { id: Tab; label: string; code: string }[] = [
   { id: 'today', label: 'Aujourd’hui', code: 'A' },
   { id: 'week', label: 'Semaine', code: 'B' },
   { id: 'goals', label: 'Buts', code: 'C' },
+  { id: 'categories', label: 'Catégories', code: 'D' },
+  { id: 'history', label: 'Historique', code: 'E' },
 ];
 
 const STORAGE_KEY = 'console.activeTab';
 
 function loadTab(): Tab {
   const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved === 'today' || saved === 'week' || saved === 'goals') return saved;
-  return 'today';
+  return (TAB_IDS as string[]).includes(saved ?? '') ? (saved as Tab) : 'today';
 }
 
 // Horloge live, comme la maquette.
@@ -77,6 +82,8 @@ export function App() {
         {tab === 'today' && <TodayView day={day} />}
         {tab === 'week' && <WeekView referenceDay={day} />}
         {tab === 'goals' && <GoalsView />}
+        {tab === 'categories' && <CategoriesView />}
+        {tab === 'history' && <HistoryView />}
 
         <div className="titleblock">
           <div className="tb-head">PLANIFICATION QUOTIDIENNE</div>

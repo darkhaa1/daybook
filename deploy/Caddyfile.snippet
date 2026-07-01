@@ -1,0 +1,9 @@
+tasks.darkhaa.dev {
+	reverse_proxy 10.10.0.31:3001
+
+	# --- Authentik forward-auth (à activer plus tard, hors scope de ce dépôt) ---
+	# forward_auth 10.10.0.30:9000 {
+	# 	uri /outpost.goauthentik.io/auth/caddy
+	# 	copy_headers X-Authentik-Username X-Authentik-Groups X-Authentik-Email X-Authentik-Name X-Authentik-Uid
+	# }
+}

@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { db } from '../db.ts';
-import { isCategory, isPeriod } from '../shared.ts';
+import { isPeriod } from '../shared.ts';
+import { isActiveCategoryKey } from '../categoriesRepo.ts';
 import { toGoal, type GoalRow } from '../models.ts';
 import { badRequest, notFound, parseId, readJson, requireString } from '../http.ts';
 
@@ -18,7 +19,9 @@ const deleteGoal = db.prepare('DELETE FROM goals WHERE id = ?');
 function readNullableCategory(body: Record<string, unknown>): string | null {
   const value = body['category'];
   if (value === null || value === undefined || value === '') return null;
-  if (!isCategory(value)) throw badRequest(`Catégorie invalide: ${String(value)}`);
+  if (typeof value !== 'string' || !isActiveCategoryKey(value)) {
+    throw badRequest(`Catégorie invalide ou inactive: ${String(value)}`);
+  }
   return value;
 }
 

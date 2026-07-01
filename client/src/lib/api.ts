@@ -1,9 +1,11 @@
 import type {
   Category,
+  CategoryDef,
   DailyReview,
   DayPayload,
   FocusSession,
   Goal,
+  HistoryResponse,
   Period,
   Task,
   WeekAggregation,
@@ -94,4 +96,19 @@ export const api = {
   ) => request<Goal>(`/goals/${id}`, { method: 'PATCH', ...body(data) }),
   deleteGoal: (id: number) =>
     request<{ ok: true }>(`/goals/${id}`, { method: 'DELETE' }),
+
+  // --- Catégories ---
+  getCategories: (all?: boolean) =>
+    request<CategoryDef[]>(`/categories${all ? '?all=1' : ''}`),
+  createCategory: (data: { key: string; label: string; color: string }) =>
+    request<CategoryDef>('/categories', { method: 'POST', ...body(data) }),
+  updateCategory: (
+    id: number,
+    data: Partial<{ label: string; color: string; sort_order: number; is_archived: boolean }>,
+  ) => request<CategoryDef>(`/categories/${id}`, { method: 'PATCH', ...body(data) }),
+  deleteCategory: (id: number, hard?: boolean) =>
+    request<{ ok: true }>(`/categories/${id}${hard ? '?hard=1' : ''}`, { method: 'DELETE' }),
+
+  // --- Historique ---
+  getHistory: (days = 30) => request<HistoryResponse>(`/history?days=${days}`),
 };

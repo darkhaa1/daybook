@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { CATEGORIES, CATEGORY_LABELS } from '@shared';
-import type { Category, Goal, Period } from '../types.ts';
+import type { Goal, Period } from '../types.ts';
 import { api, ApiError } from '../lib/api.ts';
+import { CategorySelect } from './CategorySelect.tsx';
+import { CategoryChip } from './CategoryChip.tsx';
 
 type Filter = 'all' | Period;
 
@@ -14,7 +15,7 @@ export function GoalsView() {
   // Formulaire nouveau but.
   const [title, setTitle] = useState('');
   const [period, setPeriod] = useState<Period>('weekly');
-  const [category, setCategory] = useState<Category | ''>('');
+  const [category, setCategory] = useState('');
   const [targetHours, setTargetHours] = useState('');
 
   useEffect(() => {
@@ -109,18 +110,12 @@ export function GoalsView() {
             <option value="weekly">Hebdomadaire</option>
             <option value="monthly">Mensuel</option>
           </select>
-          <select
-            aria-label="Catégorie (optionnelle)"
+          <CategorySelect
             value={category}
-            onChange={(e) => setCategory(e.target.value as Category | '')}
-          >
-            <option value="">— Sans catégorie —</option>
-            {CATEGORIES.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat} — {CATEGORY_LABELS[cat]}
-              </option>
-            ))}
-          </select>
+            onChange={setCategory}
+            ariaLabel="Catégorie (optionnelle)"
+            includeEmpty={{ label: '— Sans catégorie —' }}
+          />
           <input
             type="number"
             min="0"
@@ -168,7 +163,7 @@ export function GoalsView() {
               />
               <span className={`task-text${g.done ? ' done' : ''}`}>{g.title}</span>
               <span className="chip">{g.period === 'weekly' ? 'HEBDO' : 'MENSUEL'}</span>
-              {g.category && <span className="chip">{g.category}</span>}
+              {g.category && <CategoryChip categoryKey={g.category} />}
               {g.target_hours !== null && <span className="chip">{g.target_hours}h</span>}
               <button
                 type="button"

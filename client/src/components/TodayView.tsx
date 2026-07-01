@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { Category, FocusSession, Task } from '../types.ts';
+import type { FocusSession, Task } from '../types.ts';
 import { api, ApiError } from '../lib/api.ts';
 import { CategorySelect } from './CategorySelect.tsx';
+import { CategoryChip } from './CategoryChip.tsx';
 import { Timer } from './Timer.tsx';
+import { useCategories } from '../context/CategoriesContext.tsx';
 
 export function TodayView({ day }: { day: string }) {
+  const { active } = useCategories();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [sessions, setSessions] = useState<FocusSession[]>([]);
   const [advanced, setAdvanced] = useState('');
@@ -14,7 +17,15 @@ export function TodayView({ day }: { day: string }) {
 
   // Formulaire nouvelle tâche.
   const [newText, setNewText] = useState('');
-  const [newCat, setNewCat] = useState<Category>('FORM');
+  const [newCat, setNewCat] = useState('');
+
+  // Sélectionne la première catégorie active dès qu'elle est disponible.
+  useEffect(() => {
+    if (!newCat && active.length > 0) {
+      const first = active[0];
+      if (first) setNewCat(first.key);
+    }
+  }, [active, newCat]);
 
   // Confirmation "Enregistré" du bilan.
   const [savedFlash, setSavedFlash] = useState(false);
@@ -74,7 +85,7 @@ export function TodayView({ day }: { day: string }) {
   }
 
   const onSessionComplete = useCallback(
-    (category: Category, durationSec: number) => {
+    (category: string, durationSec: number) => {
       api
         .createSession({ category, duration_sec: durationSec, day })
         .then((session) => setSessions((prev) => [...prev, session]))
@@ -123,7 +134,7 @@ export function TodayView({ day }: { day: string }) {
                   aria-label={`Marquer « ${t.text} » comme ${t.done ? 'à faire' : 'terminé'}`}
                 />
                 <span className={`task-text${t.done ? ' done' : ''}`}>{t.text}</span>
-                <span className="chip">{t.category}</span>
+                <CategoryChip categoryKey={t.category} />
                 <button
                   type="button"
                   className="del-btn"
@@ -148,10 +159,15 @@ export function TodayView({ day }: { day: string }) {
               }}
             />
             <CategorySelect value={newCat} onChange={setNewCat} ariaLabel="Catégorie" />
-            <button type="button" className="btn primary" onClick={addTask}>
+            <button type="button" className="btn primary" onClick={addTask} disabled={!newCat}>
               + Ajouter
             </button>
           </div>
+          {active.length === 0 && (
+            <p className="muted-note">
+              Aucune catégorie active — gérez vos catégories dans l'onglet Catégories.
+            </p>
+          )}
 
           <div className="progress-label">
             <span>

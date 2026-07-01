@@ -8,6 +8,8 @@ import { sessions } from './routes/sessions.ts';
 import { week } from './routes/week.ts';
 import { reviews } from './routes/reviews.ts';
 import { goals } from './routes/goals.ts';
+import { categories } from './routes/categories.ts';
+import { history } from './routes/history.ts';
 
 const app = new Hono();
 
@@ -21,6 +23,8 @@ api.route('/sessions', sessions);
 api.route('/week', week);
 api.route('/reviews', reviews);
 api.route('/goals', goals);
+api.route('/categories', categories);
+api.route('/history', history);
 
 // 404 JSON stable pour toute route /api inconnue.
 api.all('/*', () => {

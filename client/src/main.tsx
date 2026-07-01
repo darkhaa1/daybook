@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App.tsx';
+import { CategoriesProvider } from './context/CategoriesContext.tsx';
 import './styles.css';
 
 const rootEl = document.getElementById('root');
@@ -8,6 +9,8 @@ if (!rootEl) throw new Error('#root introuvable');
 
 createRoot(rootEl).render(
   <StrictMode>
-    <App />
+    <CategoriesProvider>
+      <App />
+    </CategoriesProvider>
   </StrictMode>,
 );

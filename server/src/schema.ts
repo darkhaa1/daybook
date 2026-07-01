@@ -37,4 +37,18 @@ CREATE TABLE IF NOT EXISTS goals (
   done         INTEGER NOT NULL DEFAULT 0,
   created_at   TEXT    NOT NULL
 );
+
+-- "category" sur tasks/focus_sessions/goals reste une colonne TEXT libre :
+-- elle référence categories.key par convention (pas de FK déclarée), afin de
+-- ne pas retoucher le schéma/les requêtes existantes. categories.key est
+-- immuable après création ; seuls label/color/sort_order/is_archived changent.
+CREATE TABLE IF NOT EXISTS categories (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  key         TEXT    NOT NULL UNIQUE,
+  label       TEXT    NOT NULL,
+  color       TEXT    NOT NULL,
+  sort_order  INTEGER NOT NULL DEFAULT 0,
+  is_archived INTEGER NOT NULL DEFAULT 0,
+  created_at  TEXT    NOT NULL
+);
 `;

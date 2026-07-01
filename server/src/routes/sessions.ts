@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '../db.ts';
-import { isCategory } from '../shared.ts';
+import { isActiveCategoryKey } from '../categoriesRepo.ts';
 import { toSession, type SessionRow } from '../models.ts';
 import { badRequest, parseDate, readJson } from '../http.ts';
 
@@ -17,8 +17,8 @@ sessions.post('/', async (c) => {
   const body = await readJson(c);
 
   const category = body['category'];
-  if (!isCategory(category)) {
-    throw badRequest(`Catégorie invalide: ${String(category)}`);
+  if (typeof category !== 'string' || !isActiveCategoryKey(category)) {
+    throw badRequest(`Catégorie invalide ou inactive: ${String(category)}`);
   }
 
   const duration = body['duration_sec'];
