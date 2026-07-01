@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
-import { db } from '../db.js';
-import { isCategory } from '../shared.js';
-import { toSession, type SessionRow } from '../models.js';
-import { badRequest, parseDate, readJson } from '../http.js';
+import { db } from '../db.ts';
+import { isCategory } from '../shared.ts';
+import { toSession, type SessionRow } from '../models.ts';
+import { badRequest, parseDate, readJson } from '../http.ts';
 
 export const sessions = new Hono();
 

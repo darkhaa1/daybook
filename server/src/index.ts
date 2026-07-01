@@ -1,13 +1,13 @@
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
-import { onError, notFound } from './http.js';
-import { day } from './routes/day.js';
-import { tasks } from './routes/tasks.js';
-import { sessions } from './routes/sessions.js';
-import { week } from './routes/week.js';
-import { reviews } from './routes/reviews.js';
-import { goals } from './routes/goals.js';
+import { onError, notFound } from './http.ts';
+import { day } from './routes/day.ts';
+import { tasks } from './routes/tasks.ts';
+import { sessions } from './routes/sessions.ts';
+import { week } from './routes/week.ts';
+import { reviews } from './routes/reviews.ts';
+import { goals } from './routes/goals.ts';
 
 const app = new Hono();
 

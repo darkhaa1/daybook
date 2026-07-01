@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { SCHEMA_SQL } from './schema.js';
+import { SCHEMA_SQL } from './schema.ts';
 
 const DB_PATH = process.env.DB_PATH ?? './data/console.db';
 

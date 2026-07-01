@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
-import { db } from '../db.js';
-import { optionalString, parseDate, readJson } from '../http.js';
-import { toReview, type ReviewRow } from '../models.js';
+import { db } from '../db.ts';
+import { optionalString, parseDate, readJson } from '../http.ts';
+import { toReview, type ReviewRow } from '../models.ts';
 
 export const reviews = new Hono();
 

@@ -13,6 +13,8 @@
     "noFallthroughCasesInSwitch": true,
     "esModuleInterop": true,
     "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true
   },

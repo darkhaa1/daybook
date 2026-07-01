@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
-import { db } from '../db.js';
-import { isCategory, isPeriod } from '../shared.js';
-import { toGoal, type GoalRow } from '../models.js';
-import { badRequest, notFound, parseId, readJson, requireString } from '../http.js';
+import { db } from '../db.ts';
+import { isCategory, isPeriod } from '../shared.ts';
+import { toGoal, type GoalRow } from '../models.ts';
+import { badRequest, notFound, parseId, readJson, requireString } from '../http.ts';
 
 export const goals = new Hono();
 

@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
-import { db } from '../db.js';
-import { isCategory } from '../shared.js';
-import { toTask, type TaskRow } from '../models.js';
-import { badRequest, notFound, parseDate, parseId, readJson, requireString } from '../http.js';
+import { db } from '../db.ts';
+import { isCategory } from '../shared.ts';
+import { toTask, type TaskRow } from '../models.ts';
+import { badRequest, notFound, parseDate, parseId, readJson, requireString } from '../http.ts';
 
 export const tasks = new Hono();
 

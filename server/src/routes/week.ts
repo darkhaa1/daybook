@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
-import { db } from '../db.js';
-import { CATEGORIES, type Category } from '../shared.js';
-import { parseDate } from '../http.js';
+import { db } from '../db.ts';
+import { CATEGORIES, type Category } from '../shared.ts';
+import { parseDate } from '../http.ts';
 
 export const week = new Hono();
 

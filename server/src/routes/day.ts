@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
-import { db } from '../db.js';
-import { parseDate } from '../http.js';
+import { db } from '../db.ts';
+import { parseDate } from '../http.ts';
 import {
   toReview,
   toSession,
@@ -8,7 +8,7 @@ import {
   type ReviewRow,
   type SessionRow,
   type TaskRow,
-} from '../models.js';
+} from '../models.ts';
 
 export const day = new Hono();
 

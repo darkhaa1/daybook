@@ -1,4 +1,4 @@
-import type { Category, Period } from './shared.js';
+import type { Category, Period } from './shared.ts';
 
 // --- Lignes brutes SQLite (done stocké en 0/1) ---
 
