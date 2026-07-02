@@ -1128,73 +1128,66 @@ input[type='color'] {
   color: var(--amber);
 }
 
-/* Mode édition : carte complète, une seule ouverte à la fois. */
-.planner-task-edit {
-  border: 1px solid var(--amber);
+/* Mode édition inline : la ligne devient éditable sur place (heures + texte). */
+.planner-task-inline-edit {
+  border-left: 2px solid var(--amber);
+  border-bottom: 1px solid var(--line-soft);
+  background: rgba(231, 162, 58, 0.06);
   border-radius: 2px;
-  background: var(--panel);
-  padding: 12px;
-  margin: 6px 0;
+  padding: 8px 8px 9px 10px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
 }
 
-.planner-task-edit input[type='text'] {
-  flex: none;
-  width: 100%;
-  min-width: 0;
-  font-size: 13.5px;
-  padding: 7px 9px;
+.planner-task-inline-edit:last-child {
+  border-bottom: none;
 }
 
-.planner-task-edit select {
-  min-width: 0;
-  font-size: 12px;
-  padding: 6px 8px;
-}
-
-.planner-edit-times {
+.planner-inline-times {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.planner-task-edit input[type='time'] {
+.planner-task-inline-edit input[type='time'] {
   flex: none;
-  width: 108px;
+  width: 96px;
   min-width: 0;
   font-size: 12.5px;
-  padding: 6px 8px;
+  padding: 5px 7px;
 }
 
-.planner-edit-dash {
+.planner-inline-dash {
   color: var(--muted);
   font-family: 'IBM Plex Mono', monospace;
   font-size: 12px;
   flex-shrink: 0;
 }
 
-/* Catégorie + jour côte à côte (cartes larges en grille de 3). */
-.planner-edit-row {
+.planner-inline-actions {
+  margin-left: auto;
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 4px;
 }
 
-.planner-edit-row select {
-  flex: 1 1 0;
-  width: auto;
+.planner-inline-actions .btn {
+  padding: 4px 9px;
+  font-size: 12px;
+  line-height: 1.2;
 }
 
-.planner-edit-actions {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
+.planner-inline-actions .del-btn {
+  font-size: 16px;
 }
 
-.planner-edit-actions .btn {
-  padding: 6px 14px;
-  font-size: 11px;
+.planner-task-inline-edit input[type='text'] {
+  flex: none;
+  width: 100%;
+  min-width: 0;
+  font-size: 13.5px;
+  padding: 6px 8px;
 }
 
 /* Ajout rapide : un seul champ texte, Enter = créer sans horaire. */

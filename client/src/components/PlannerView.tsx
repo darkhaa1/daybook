@@ -3,7 +3,6 @@ import type { PlannerDay, PlannerWeek, Task } from '../types.ts';
 import { api, ApiError } from '../lib/api.ts';
 import { addDays, formatDayMonth, formatShort, mondayOf, todayISO, WEEKDAY_LABELS } from '../lib/date.ts';
 import { useCategories } from '../context/CategoriesContext.tsx';
-import { CategorySelect } from './CategorySelect.tsx';
 import { CategoryDot } from './CategoryDot.tsx';
 
 type TaskPatch = Partial<{
@@ -114,7 +113,6 @@ export function PlannerView({ referenceDay }: { referenceDay: string }) {
     }
   }
 
-  const weekDays = planner?.days.map((d) => d.day) ?? [];
   const rangeLabel = `${formatShort(weekStart)} — ${formatShort(addDays(weekStart, 6))}`;
 
   return (
@@ -155,7 +153,6 @@ export function PlannerView({ referenceDay }: { referenceDay: string }) {
                 data={d}
                 label={WEEKDAY_LABELS[i] ?? d.day}
                 isToday={d.day === today}
-                weekDays={weekDays}
                 editingId={editingId}
                 onStartEdit={setEditingId}
                 onCloseEdit={() => setEditingId(null)}
@@ -177,7 +174,6 @@ interface ColumnProps {
   data: PlannerDay;
   label: string;
   isToday: boolean;
-  weekDays: string[];
   editingId: number | null;
   onStartEdit: (id: number) => void;
   onCloseEdit: () => void;
@@ -192,7 +188,6 @@ function PlannerDayColumn({
   data,
   label,
   isToday,
-  weekDays,
   editingId,
   onStartEdit,
   onCloseEdit,
@@ -236,7 +231,6 @@ function PlannerDayColumn({
             <PlannerTaskEditor
               key={t.id}
               task={t}
-              weekDays={weekDays}
               onClose={onCloseEdit}
               onPatch={onPatchTask}
               onMove={onMoveTask}
@@ -302,18 +296,18 @@ function PlannerTaskLine({
   );
 }
 
-// --- Mode édition : carte complète, une seule ouverte à la fois ---
-// Enter valide, Escape annule (texte non commité), clic hors de la carte ferme.
+// --- Mode édition inline : la ligne devient éditable sur place (heures + texte),
+// une seule à la fois. Enter valide, Escape annule (texte non commité), clic
+// hors de la ligne commit + ferme. ‹ › décale la tâche d'un jour, × supprime.
 interface EditorProps {
   task: Task;
-  weekDays: string[];
   onClose: () => void;
   onPatch: (task: Task, data: TaskPatch) => void;
   onMove: (task: Task, day: string) => void;
   onDelete: (id: number) => void;
 }
 
-function PlannerTaskEditor({ task, weekDays, onClose, onPatch, onMove, onDelete }: EditorProps) {
+function PlannerTaskEditor({ task, onClose, onPatch, onMove, onDelete }: EditorProps) {
   const cardRef = useRef<HTMLLIElement | null>(null);
   const textRef = useRef<HTMLInputElement | null>(null);
 
@@ -322,7 +316,7 @@ function PlannerTaskEditor({ task, weekDays, onClose, onPatch, onMove, onDelete 
     if (v && v !== task.text) onPatch(task, { text: v });
   }
 
-  // Clic hors de la carte -> commit du texte en cours puis fermeture.
+  // Clic hors de la ligne -> commit du texte en cours puis fermeture.
   useEffect(() => {
     function onDocMouseDown(e: MouseEvent) {
       const card = cardRef.current;
@@ -337,7 +331,7 @@ function PlannerTaskEditor({ task, weekDays, onClose, onPatch, onMove, onDelete 
 
   return (
     <li
-      className="planner-task-edit"
+      className="planner-task-inline-edit"
       ref={cardRef}
       onKeyDown={(e) => {
         if (e.key === 'Enter') {
@@ -350,22 +344,14 @@ function PlannerTaskEditor({ task, weekDays, onClose, onPatch, onMove, onDelete 
         }
       }}
     >
-      <input
-        ref={textRef}
-        type="text"
-        defaultValue={task.text}
-        autoFocus
-        aria-label="Texte de la tâche"
-        onBlur={commitText}
-      />
-      <div className="planner-edit-times">
+      <div className="planner-inline-times">
         <input
           type="time"
           defaultValue={task.start_time ?? ''}
           aria-label={`Heure de début de « ${task.text} »`}
           onChange={(e) => onPatch(task, { start_time: e.target.value || null })}
         />
-        <span className="planner-edit-dash" aria-hidden="true">
+        <span className="planner-inline-dash" aria-hidden="true">
           –
         </span>
         <input
@@ -374,40 +360,44 @@ function PlannerTaskEditor({ task, weekDays, onClose, onPatch, onMove, onDelete 
           aria-label={`Heure de fin de « ${task.text} »`}
           onChange={(e) => onPatch(task, { end_time: e.target.value || null })}
         />
+        <span className="planner-inline-actions">
+          <button
+            type="button"
+            className="btn"
+            onClick={() => onMove(task, addDays(task.day, -1))}
+            aria-label={`Déplacer « ${task.text} » au jour précédent`}
+            title="Jour précédent"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => onMove(task, addDays(task.day, 1))}
+            aria-label={`Déplacer « ${task.text} » au jour suivant`}
+            title="Jour suivant"
+          >
+            ›
+          </button>
+          <button
+            type="button"
+            className="del-btn"
+            onClick={() => onDelete(task.id)}
+            aria-label={`Supprimer « ${task.text} »`}
+            title="Supprimer"
+          >
+            ×
+          </button>
+        </span>
       </div>
-      <div className="planner-edit-row">
-        <CategorySelect
-          value={task.category}
-          onChange={(v) => onPatch(task, { category: v })}
-          ariaLabel={`Catégorie de « ${task.text} »`}
-        />
-        <select
-          value={task.day}
-          onChange={(e) => onMove(task, e.target.value)}
-          aria-label={`Déplacer « ${task.text} » vers un autre jour`}
-        >
-          {weekDays.map((wd, i) => (
-            <option key={wd} value={wd}>
-              {WEEKDAY_LABELS[i] ?? wd}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="planner-edit-actions">
-        <button type="button" className="btn del-danger" onClick={() => onDelete(task.id)}>
-          Suppr.
-        </button>
-        <button
-          type="button"
-          className="btn primary"
-          onClick={() => {
-            commitText();
-            onClose();
-          }}
-        >
-          OK
-        </button>
-      </div>
+      <input
+        ref={textRef}
+        type="text"
+        defaultValue={task.text}
+        autoFocus
+        aria-label="Texte de la tâche"
+        onBlur={commitText}
+      />
     </li>
   );
 }
