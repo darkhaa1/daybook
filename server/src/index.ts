@@ -10,6 +10,7 @@ import { reviews } from './routes/reviews.ts';
 import { goals } from './routes/goals.ts';
 import { categories } from './routes/categories.ts';
 import { history } from './routes/history.ts';
+import { template } from './routes/template.ts';
 
 const app = new Hono();
 
@@ -25,6 +26,7 @@ api.route('/reviews', reviews);
 api.route('/goals', goals);
 api.route('/categories', categories);
 api.route('/history', history);
+api.route('/template', template);
 
 // 404 JSON stable pour toute route /api inconnue.
 api.all('/*', () => {

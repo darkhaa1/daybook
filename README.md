@@ -1,8 +1,9 @@
 # Console de pilotage
 
-Outil de pilotage quotidien **mono-utilisateur, privé** : suivi des priorités du jour,
-timer focus (pomodoro), bilan du soir, répartition hebdomadaire du temps réel par
-catégorie, suivi de buts, gestion des catégories et historique (30 derniers jours).
+Outil de pilotage quotidien **mono-utilisateur, privé** : priorités du jour horodatées
+(créneaux début/fin) matérialisées automatiquement depuis un planning type récurrent et
+éditable, timer focus (pomodoro), bilan du soir, répartition hebdomadaire du temps réel
+par catégorie, suivi de buts, gestion des catégories et historique (30 derniers jours).
 
 Conçu pour tourner derrière un reverse-proxy avec **forward-auth (Authentik)** sur
 `tasks.darkhaa.dev`. **L'application ne gère aucune authentification** : elle suppose un
@@ -33,7 +34,17 @@ convention (pas de clé étrangère déclarée — aucune refonte du schéma). `
 est immuable après création ; seuls `label`/`color`/`sort_order`/`is_archived` changent.
 Archiver une catégorie la retire des sélecteurs pour les nouvelles entrées, mais ses
 données historiques restent agrégées (semaine/historique). La suppression définitive
-n'est possible que si la catégorie n'est référencée par aucune donnée.
+n'est possible que si la catégorie n'est référencée par aucune donnée (tâches, sessions,
+buts ou blocs de planning type).
+
+Le **planning type** (`template_items`) est un planning récurrent éditable en base — jamais
+codé en dur — depuis l'onglet Planning type. À chaque premier accès à un jour (`GET
+/api/day/:date`), ses blocs actifs sont copiés en tâches de ce jour, puis le jour est marqué
+dans `day_template_applied` : c'est un garde-fou anti-respawn, les modifications faites au
+jour (suppression, édition) ne sont jamais écrasées au rechargement. Modifier le template
+n'affecte donc jamais un jour déjà ouvert ; le bouton « Réappliquer au jour courant »
+(`POST /api/day/:date/apply-template`) permet de pousser les changements explicitement (en
+ajout simple, sans déduplication).
 
 ## Prérequis
 
@@ -144,9 +155,10 @@ implémenté ici, à activer plus tard côté proxy uniquement).
 
 | Méthode | Route | Rôle |
 | --- | --- | --- |
-| `GET` | `/api/day/:date` | `{ tasks, sessions, review }` du jour. |
-| `POST` | `/api/tasks` | Crée une tâche `{ text, category, day }`. |
-| `PATCH` | `/api/tasks/:id` | Maj `{ done?, text? }`. |
+| `GET` | `/api/day/:date` | `{ tasks, sessions, review }` du jour (matérialise le planning type au premier accès). |
+| `POST` | `/api/day/:date/apply-template` | Réapplique le planning type au jour (ajout simple). |
+| `POST` | `/api/tasks` | Crée une tâche `{ text, category, day, start_time?, end_time? }` (`HH:MM`). |
+| `PATCH` | `/api/tasks/:id` | Maj `{ done?, text?, category?, start_time?, end_time? }`. |
 | `DELETE` | `/api/tasks/:id` | Supprime une tâche. |
 | `POST` | `/api/sessions` | Enregistre une session focus `{ category, duration_sec, day }`. |
 | `GET` | `/api/week/:startDate` | Agrégation heures/catégorie (lundi → dimanche). |
@@ -158,7 +170,14 @@ implémenté ici, à activer plus tard côté proxy uniquement).
 | `PATCH` | `/api/categories/:id` | Maj `{ label?, color?, sort_order?, is_archived? }` (`key` immuable). |
 | `DELETE` | `/api/categories/:id` | Archive par défaut ; supprime définitivement avec `?hard=1` si inutilisée. |
 | `GET` | `/api/history?days=30` | Historique par jour + résumé de la période. |
+| `GET` | `/api/template` | Blocs actifs triés par heure de début ; `?all=1` inclut les inactifs. |
+| `POST` | `/api/template` | Crée un bloc `{ text, category, start_time?, end_time? }`. |
+| `PATCH` | `/api/template/:id` | Maj `{ text?, category?, start_time?, end_time?, sort_order?, is_active? }`. |
+| `DELETE` | `/api/template/:id` | Suppression définitive (pas d'historique à préserver). |
 
 Catégories : entièrement dynamiques (table `categories`), aucune liste figée. Le seed
 initial crée `FORM`, `LAB`, `CAND`, `PROJ`, `TRAD`, `CHIEN`, `PERSO` (une seule fois, à la
 première initialisation de la base) ; gérables ensuite depuis l'onglet Catégories.
+
+Planning type : le seed initial crée un exemple 08:00→18:00 (une seule fois, à la première
+initialisation de la base) ; entièrement modifiable ensuite depuis l'onglet Planning type.

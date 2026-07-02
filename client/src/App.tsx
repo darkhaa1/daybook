@@ -4,11 +4,12 @@ import { WeekView } from './components/WeekView.tsx';
 import { GoalsView } from './components/GoalsView.tsx';
 import { CategoriesView } from './components/CategoriesView.tsx';
 import { HistoryView } from './components/HistoryView.tsx';
+import { TemplateView } from './components/TemplateView.tsx';
 import { todayISO, formatBlueprint } from './lib/date.ts';
 
-type Tab = 'today' | 'week' | 'goals' | 'categories' | 'history';
+type Tab = 'today' | 'week' | 'goals' | 'categories' | 'history' | 'template';
 
-const TAB_IDS: Tab[] = ['today', 'week', 'goals', 'categories', 'history'];
+const TAB_IDS: Tab[] = ['today', 'week', 'goals', 'categories', 'history', 'template'];
 
 const TABS: { id: Tab; label: string; code: string }[] = [
   { id: 'today', label: 'Aujourd’hui', code: 'A' },
@@ -16,6 +17,7 @@ const TABS: { id: Tab; label: string; code: string }[] = [
   { id: 'goals', label: 'Buts', code: 'C' },
   { id: 'categories', label: 'Catégories', code: 'D' },
   { id: 'history', label: 'Historique', code: 'E' },
+  { id: 'template', label: 'Planning type', code: 'F' },
 ];
 
 const STORAGE_KEY = 'console.activeTab';
@@ -84,6 +86,7 @@ export function App() {
         {tab === 'goals' && <GoalsView />}
         {tab === 'categories' && <CategoriesView />}
         {tab === 'history' && <HistoryView />}
+        {tab === 'template' && <TemplateView />}
 
         <div className="titleblock">
           <div className="tb-head">PLANIFICATION QUOTIDIENNE</div>

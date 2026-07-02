@@ -13,7 +13,8 @@ const SELECT_BASE = `
   SELECT c.*,
     (EXISTS(SELECT 1 FROM tasks t WHERE t.category = c.key)
      OR EXISTS(SELECT 1 FROM focus_sessions f WHERE f.category = c.key)
-     OR EXISTS(SELECT 1 FROM goals g WHERE g.category = c.key)) AS in_use
+     OR EXISTS(SELECT 1 FROM goals g WHERE g.category = c.key)
+     OR EXISTS(SELECT 1 FROM template_items ti WHERE ti.category = c.key)) AS in_use
   FROM categories c
 `;
 
@@ -30,7 +31,8 @@ const countRefs = db.prepare(`
   SELECT
     (SELECT COUNT(*) FROM tasks WHERE category = ?) +
     (SELECT COUNT(*) FROM focus_sessions WHERE category = ?) +
-    (SELECT COUNT(*) FROM goals WHERE category = ?) AS total
+    (SELECT COUNT(*) FROM goals WHERE category = ?) +
+    (SELECT COUNT(*) FROM template_items WHERE category = ?) AS total
 `);
 const hardDelete = db.prepare('DELETE FROM categories WHERE id = ?');
 const archiveById = db.prepare('UPDATE categories SET is_archived = 1 WHERE id = @id');
@@ -122,7 +124,9 @@ categories.delete('/:id', (c) => {
   const hard = c.req.query('hard') === '1';
 
   if (hard) {
-    const refCount = (countRefs.get(existing.key, existing.key, existing.key) as { total: number }).total;
+    const refCount = (
+      countRefs.get(existing.key, existing.key, existing.key, existing.key) as { total: number }
+    ).total;
     if (refCount > 0) {
       throw new ApiError(
         'category_in_use',

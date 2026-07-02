@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react';
 import type { FocusSession, Task } from '../types.ts';
 import { api, ApiError } from '../lib/api.ts';
 import { CategorySelect } from './CategorySelect.tsx';
-import { CategoryChip } from './CategoryChip.tsx';
 import { Timer } from './Timer.tsx';
 import { useCategories } from '../context/CategoriesContext.tsx';
 
@@ -18,6 +17,8 @@ export function TodayView({ day }: { day: string }) {
   // Formulaire nouvelle tâche.
   const [newText, setNewText] = useState('');
   const [newCat, setNewCat] = useState('');
+  const [newStart, setNewStart] = useState('');
+  const [newEnd, setNewEnd] = useState('');
 
   // Sélectionne la première catégorie active dès qu'elle est disponible.
   useEffect(() => {
@@ -56,20 +57,39 @@ export function TodayView({ day }: { day: string }) {
 
   async function addTask() {
     const text = newText.trim();
-    if (!text) return;
+    if (!text || !newCat) return;
     try {
-      const task = await api.createTask({ text, category: newCat, day });
+      const task = await api.createTask({
+        text,
+        category: newCat,
+        day,
+        start_time: newStart || null,
+        end_time: newEnd || null,
+      });
       setTasks((prev) => [...prev, task]);
       setNewText('');
+      setNewStart('');
+      setNewEnd('');
+      setError(null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Ajout impossible');
     }
   }
 
-  async function toggleTask(task: Task) {
+  async function patchTask(
+    task: Task,
+    data: Partial<{
+      done: boolean;
+      text: string;
+      category: string;
+      start_time: string | null;
+      end_time: string | null;
+    }>,
+  ) {
     try {
-      const updated = await api.updateTask(task.id, { done: !task.done });
+      const updated = await api.updateTask(task.id, data);
       setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+      setError(null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Mise à jour impossible');
     }
@@ -79,6 +99,7 @@ export function TodayView({ day }: { day: string }) {
     try {
       await api.deleteTask(id);
       setTasks((prev) => prev.filter((t) => t.id !== id));
+      setError(null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Suppression impossible');
     }
@@ -126,15 +147,43 @@ export function TodayView({ day }: { day: string }) {
               <li className="task-empty">Aucune priorité pour aujourd’hui.</li>
             )}
             {tasks.map((t) => (
-              <li key={t.id}>
+              <li key={t.id} className="task-row">
                 <input
                   type="checkbox"
                   checked={t.done}
-                  onChange={() => toggleTask(t)}
+                  onChange={() => patchTask(t, { done: !t.done })}
                   aria-label={`Marquer « ${t.text} » comme ${t.done ? 'à faire' : 'terminé'}`}
                 />
-                <span className={`task-text${t.done ? ' done' : ''}`}>{t.text}</span>
-                <CategoryChip categoryKey={t.category} />
+                <input
+                  type="time"
+                  className="task-time-input"
+                  defaultValue={t.start_time ?? ''}
+                  aria-label={`Heure de début de « ${t.text} »`}
+                  onChange={(e) => patchTask(t, { start_time: e.target.value || null })}
+                />
+                <input
+                  type="time"
+                  className="task-time-input"
+                  defaultValue={t.end_time ?? ''}
+                  aria-label={`Heure de fin de « ${t.text} »`}
+                  onChange={(e) => patchTask(t, { end_time: e.target.value || null })}
+                />
+                <input
+                  type="text"
+                  className={`task-text-input${t.done ? ' done' : ''}`}
+                  defaultValue={t.text}
+                  aria-label="Texte de la tâche"
+                  onBlur={(e) => {
+                    const v = e.target.value.trim();
+                    if (v && v !== t.text) patchTask(t, { text: v });
+                    else e.target.value = t.text;
+                  }}
+                />
+                <CategorySelect
+                  value={t.category}
+                  onChange={(v) => patchTask(t, { category: v })}
+                  ariaLabel={`Catégorie de « ${t.text} »`}
+                />
                 <button
                   type="button"
                   className="del-btn"
@@ -148,6 +197,20 @@ export function TodayView({ day }: { day: string }) {
           </ul>
 
           <div className="add-row">
+            <input
+              type="time"
+              className="task-time-input"
+              value={newStart}
+              aria-label="Heure de début (optionnelle)"
+              onChange={(e) => setNewStart(e.target.value)}
+            />
+            <input
+              type="time"
+              className="task-time-input"
+              value={newEnd}
+              aria-label="Heure de fin (optionnelle)"
+              onChange={(e) => setNewEnd(e.target.value)}
+            />
             <input
               type="text"
               value={newText}

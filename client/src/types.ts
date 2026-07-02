@@ -9,6 +9,8 @@ export interface Task {
   done: boolean;
   day: string;
   created_at: string;
+  start_time: string | null;
+  end_time: string | null;
 }
 
 export interface FocusSession {
@@ -53,6 +55,17 @@ export interface WeekAggregation {
   end: string;
   totalSeconds: number;
   categories: WeekCategory[];
+}
+
+export interface TemplateItem {
+  id: number;
+  text: string;
+  category: Category;
+  start_time: string | null;
+  end_time: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
 }
 
 export interface CategoryDef {

@@ -9,6 +9,8 @@ export interface TaskRow {
   done: number;
   day: string;
   created_at: string;
+  start_time: string | null;
+  end_time: string | null;
 }
 
 export interface SessionRow {
@@ -36,6 +38,17 @@ export interface GoalRow {
   created_at: string;
 }
 
+export interface TemplateItemRow {
+  id: number;
+  text: string;
+  category: string;
+  start_time: string | null;
+  end_time: string | null;
+  sort_order: number;
+  is_active: number;
+  created_at: string;
+}
+
 export interface CategoryRow {
   id: number;
   key: string;
@@ -57,6 +70,8 @@ export interface Task {
   done: boolean;
   day: string;
   created_at: string;
+  start_time: string | null;
+  end_time: string | null;
 }
 
 export interface FocusSession {
@@ -84,6 +99,17 @@ export interface Goal {
   created_at: string;
 }
 
+export interface TemplateItem {
+  id: number;
+  text: string;
+  category: Category;
+  start_time: string | null;
+  end_time: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+}
+
 export interface CategoryDef {
   id: number;
   key: string;
@@ -103,6 +129,8 @@ export function toTask(row: TaskRow): Task {
     done: row.done === 1,
     day: row.day,
     created_at: row.created_at,
+    start_time: row.start_time,
+    end_time: row.end_time,
   };
 }
 
@@ -133,6 +161,19 @@ export function toGoal(row: GoalRow): Goal {
     period: row.period as Period,
     target_hours: row.target_hours,
     done: row.done === 1,
+    created_at: row.created_at,
+  };
+}
+
+export function toTemplateItem(row: TemplateItemRow): TemplateItem {
+  return {
+    id: row.id,
+    text: row.text,
+    category: row.category as Category,
+    start_time: row.start_time,
+    end_time: row.end_time,
+    sort_order: row.sort_order,
+    is_active: row.is_active === 1,
     created_at: row.created_at,
   };
 }

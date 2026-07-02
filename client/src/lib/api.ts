@@ -8,6 +8,7 @@ import type {
   HistoryResponse,
   Period,
   Task,
+  TemplateItem,
   WeekAggregation,
 } from '../types.ts';
 
@@ -58,10 +59,23 @@ export const api = {
   getDay: (date: string) => request<DayPayload>(`/day/${date}`),
 
   // --- Tâches ---
-  createTask: (data: { text: string; category: Category; day: string }) =>
-    request<Task>('/tasks', { method: 'POST', ...body(data) }),
-  updateTask: (id: number, data: { done?: boolean; text?: string }) =>
-    request<Task>(`/tasks/${id}`, { method: 'PATCH', ...body(data) }),
+  createTask: (data: {
+    text: string;
+    category: Category;
+    day: string;
+    start_time?: string | null;
+    end_time?: string | null;
+  }) => request<Task>('/tasks', { method: 'POST', ...body(data) }),
+  updateTask: (
+    id: number,
+    data: Partial<{
+      done: boolean;
+      text: string;
+      category: Category;
+      start_time: string | null;
+      end_time: string | null;
+    }>,
+  ) => request<Task>(`/tasks/${id}`, { method: 'PATCH', ...body(data) }),
   deleteTask: (id: number) =>
     request<{ ok: true }>(`/tasks/${id}`, { method: 'DELETE' }),
 
@@ -111,4 +125,28 @@ export const api = {
 
   // --- Historique ---
   getHistory: (days = 30) => request<HistoryResponse>(`/history?days=${days}`),
+
+  // --- Planning type ---
+  getTemplate: (all?: boolean) => request<TemplateItem[]>(`/template${all ? '?all=1' : ''}`),
+  createTemplateItem: (data: {
+    text: string;
+    category: Category;
+    start_time?: string | null;
+    end_time?: string | null;
+  }) => request<TemplateItem>('/template', { method: 'POST', ...body(data) }),
+  updateTemplateItem: (
+    id: number,
+    data: Partial<{
+      text: string;
+      category: Category;
+      start_time: string | null;
+      end_time: string | null;
+      sort_order: number;
+      is_active: boolean;
+    }>,
+  ) => request<TemplateItem>(`/template/${id}`, { method: 'PATCH', ...body(data) }),
+  deleteTemplateItem: (id: number) =>
+    request<{ ok: true }>(`/template/${id}`, { method: 'DELETE' }),
+  applyTemplate: (date: string) =>
+    request<{ ok: true; applied: number }>(`/day/${date}/apply-template`, { method: 'POST' }),
 };
