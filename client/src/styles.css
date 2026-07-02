@@ -294,15 +294,15 @@ h1 {
   color: var(--muted);
 }
 
-.task-text-input {
-  flex: 1;
-  min-width: 120px;
-  font-size: 14.5px;
+/* Liste de tâches en lignes compactes (Aujourd'hui — mêmes lignes que le Planning). */
+.task-lines {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
 }
 
-.task-text-input.done {
-  text-decoration: line-through;
-  color: var(--muted);
+.task-lines .task-empty {
+  padding: 9px 0;
 }
 
 .chip {
@@ -344,7 +344,6 @@ h1 {
 
 input[type='text'],
 input[type='number'],
-input[type='time'],
 select,
 textarea {
   background: var(--bg);
@@ -365,14 +364,19 @@ input[type='number'] {
   width: 120px;
 }
 
-input[type='time'] {
-  color-scheme: dark;
-  width: 100px;
+/* Champ créneau 24h — saisie texte souple (9, 9h30, 930, 9-10h30),
+   remplace les pickers natifs à affichage AM/PM. */
+.slot-field {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12.5px;
+  width: 132px;
+  flex: 0 0 auto;
+  padding: 7px 9px;
 }
 
-.task-time-input {
-  width: 88px;
-  flex: 0 0 auto;
+.slot-field.invalid {
+  border-color: var(--coral);
+  outline-color: var(--coral);
 }
 
 select {
@@ -1062,7 +1066,8 @@ input[type='color'] {
 }
 
 /* Mode lecture : une ligne compacte par tâche, façon rangée de cartouche.
-   Zéro input/select/bouton visible — pastille = toggle done, corps = édition. */
+   Zéro input/select/bouton visible — pastille = toggle done, corps = édition.
+   Classes partagées entre Planning et Aujourd'hui (composant TaskItem). */
 .planner-task-line {
   display: flex;
   align-items: center;
@@ -1189,19 +1194,15 @@ input[type='color'] {
   gap: 6px;
 }
 
-.planner-task-inline-edit input[type='time'] {
-  flex: none;
-  width: 96px;
-  min-width: 0;
-  font-size: 12.5px;
-  padding: 5px 7px;
+.planner-task-inline-edit .slot-field {
+  width: 140px;
 }
 
-.planner-inline-dash {
-  color: var(--muted);
-  font-family: 'IBM Plex Mono', monospace;
+.planner-task-inline-edit select {
+  flex: 1 1 0;
+  min-width: 0;
   font-size: 12px;
-  flex-shrink: 0;
+  padding: 6px;
 }
 
 .planner-inline-del {

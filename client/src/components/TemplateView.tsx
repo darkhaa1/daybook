@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import type { TemplateItem } from '../types.ts';
 import { api, ApiError } from '../lib/api.ts';
+import { parseSlotText } from '../lib/timeText.ts';
 import { useCategories } from '../context/CategoriesContext.tsx';
 import { CategorySelect } from './CategorySelect.tsx';
 import { CategoryDot } from './CategoryDot.tsx';
 import { DayOfWeekSelect } from './DayOfWeekSelect.tsx';
+import { SlotField } from './SlotField.tsx';
 import { todayISO, WEEKDAY_LABELS } from '../lib/date.ts';
 
 // Ordre d'affichage des sections : "Tous les jours" puis lundi..dimanche.
@@ -17,11 +19,10 @@ export function TemplateView() {
   const [error, setError] = useState<string | null>(null);
   const [applyMsg, setApplyMsg] = useState<string | null>(null);
 
-  // Formulaire nouveau bloc.
+  // Formulaire nouveau bloc — créneau 24h en texte souple ("9-10h30").
   const [text, setText] = useState('');
   const [category, setCategory] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
+  const [slotText, setSlotText] = useState('');
   const [dayOfWeek, setDayOfWeek] = useState<number | null>(null);
 
   useEffect(() => {
@@ -59,17 +60,21 @@ export function TemplateView() {
   async function addItem() {
     const trimmed = text.trim();
     if (!trimmed || !category) return;
+    const slot = parseSlotText(slotText);
+    if (!slot) {
+      setError(`Créneau invalide : « ${slotText} » (ex : 9-10h30, 14, vide = sans horaire)`);
+      return;
+    }
     try {
       await api.createTemplateItem({
         text: trimmed,
         category,
-        start_time: startTime || null,
-        end_time: endTime || null,
+        start_time: slot.start,
+        end_time: slot.end,
         day_of_week: dayOfWeek,
       });
       setText('');
-      setStartTime('');
-      setEndTime('');
+      setSlotText('');
       setError(null);
       await load();
     } catch (err) {
@@ -147,16 +152,16 @@ export function TemplateView() {
         <p className="panel-title">Nouveau bloc</p>
         <div className="template-form">
           <input
-            type="time"
-            value={startTime}
-            aria-label="Heure de début"
-            onChange={(e) => setStartTime(e.target.value)}
-          />
-          <input
-            type="time"
-            value={endTime}
-            aria-label="Heure de fin"
-            onChange={(e) => setEndTime(e.target.value)}
+            type="text"
+            className="slot-field"
+            value={slotText}
+            placeholder="ex: 9-10h30"
+            aria-label="Créneau (24h, optionnel)"
+            title="Créneau 24h — ex: 9-10h30, 14, 930 ; vide = sans horaire"
+            onChange={(e) => setSlotText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') addItem();
+            }}
           />
           <input
             type="text"
@@ -209,19 +214,11 @@ export function TemplateView() {
                     aria-label={`${item.is_active ? 'Désactiver' : 'Activer'} « ${item.text} »`}
                     onChange={() => patch(item, { is_active: !item.is_active })}
                   />
-                  <input
-                    type="time"
-                    className="task-time-input"
-                    defaultValue={item.start_time ?? ''}
-                    aria-label={`Heure de début de « ${item.text} »`}
-                    onChange={(e) => patch(item, { start_time: e.target.value || null })}
-                  />
-                  <input
-                    type="time"
-                    className="task-time-input"
-                    defaultValue={item.end_time ?? ''}
-                    aria-label={`Heure de fin de « ${item.text} »`}
-                    onChange={(e) => patch(item, { end_time: e.target.value || null })}
+                  <SlotField
+                    start={item.start_time}
+                    end={item.end_time}
+                    onCommit={(start, end) => patch(item, { start_time: start, end_time: end })}
+                    ariaLabel={`Créneau de « ${item.text} »`}
                   />
                   <input
                     type="text"

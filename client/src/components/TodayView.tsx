@@ -1,9 +1,26 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FocusSession, Task } from '../types.ts';
 import { api, ApiError } from '../lib/api.ts';
+import { extractLeadingSlot } from '../lib/timeText.ts';
 import { CategorySelect } from './CategorySelect.tsx';
+import { TaskInlineEditor, TaskLineBody, type TaskPatch } from './TaskItem.tsx';
 import { Timer } from './Timer.tsx';
 import { useCategories } from '../context/CategoriesContext.tsx';
+
+// Même ordre que le serveur : planifiées en chrono d'abord, non-planifiées en
+// fin — appliqué localement pour re-trier dès qu'une heure change.
+function sortTasks(list: Task[]): Task[] {
+  return [...list].sort((a, b) => {
+    const an = a.start_time === null ? 1 : 0;
+    const bn = b.start_time === null ? 1 : 0;
+    if (an !== bn) return an - bn;
+    if (a.start_time && b.start_time && a.start_time !== b.start_time) {
+      return a.start_time < b.start_time ? -1 : 1;
+    }
+    if (a.created_at !== b.created_at) return a.created_at < b.created_at ? -1 : 1;
+    return a.id - b.id;
+  });
+}
 
 export function TodayView({ day }: { day: string }) {
   const { active } = useCategories();
@@ -13,12 +30,12 @@ export function TodayView({ day }: { day: string }) {
   const [dragged, setDragged] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Une seule tâche en édition à la fois (édition inline au clic).
+  const [editingId, setEditingId] = useState<number | null>(null);
 
-  // Formulaire nouvelle tâche.
+  // Formulaire nouvelle tâche — l'heure se tape dans le texte : "9-10h30 Réviser".
   const [newText, setNewText] = useState('');
   const [newCat, setNewCat] = useState('');
-  const [newStart, setNewStart] = useState('');
-  const [newEnd, setNewEnd] = useState('');
 
   // Sélectionne la première catégorie active dès qu'elle est disponible.
   useEffect(() => {
@@ -38,7 +55,7 @@ export function TodayView({ day }: { day: string }) {
       .getDay(day)
       .then((data) => {
         if (!alive) return;
-        setTasks(data.tasks);
+        setTasks(sortTasks(data.tasks));
         setSessions(data.sessions);
         setAdvanced(data.review?.advanced ?? '');
         setDragged(data.review?.dragged ?? '');
@@ -56,39 +73,28 @@ export function TodayView({ day }: { day: string }) {
   }, [day]);
 
   async function addTask() {
-    const text = newText.trim();
+    const { start, end, text } = extractLeadingSlot(newText);
     if (!text || !newCat) return;
     try {
       const task = await api.createTask({
         text,
         category: newCat,
         day,
-        start_time: newStart || null,
-        end_time: newEnd || null,
+        start_time: start,
+        end_time: end,
       });
-      setTasks((prev) => [...prev, task]);
+      setTasks((prev) => sortTasks([...prev, task]));
       setNewText('');
-      setNewStart('');
-      setNewEnd('');
       setError(null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Ajout impossible');
     }
   }
 
-  async function patchTask(
-    task: Task,
-    data: Partial<{
-      done: boolean;
-      text: string;
-      category: string;
-      start_time: string | null;
-      end_time: string | null;
-    }>,
-  ) {
+  async function patchTask(task: Task, data: TaskPatch) {
     try {
       const updated = await api.updateTask(task.id, data);
-      setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+      setTasks((prev) => sortTasks(prev.map((t) => (t.id === updated.id ? updated : t))));
       setError(null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Mise à jour impossible');
@@ -99,6 +105,7 @@ export function TodayView({ day }: { day: string }) {
     try {
       await api.deleteTask(id);
       setTasks((prev) => prev.filter((t) => t.id !== id));
+      setEditingId((cur) => (cur === id ? null : cur));
       setError(null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Suppression impossible');
@@ -141,81 +148,34 @@ export function TodayView({ day }: { day: string }) {
         <section className="panel">
           <p className="panel-title">A — Priorités du jour</p>
 
-          <ul className="task-list">
+          <ul className="task-lines">
             {loading && <li className="task-empty">Chargement…</li>}
             {!loading && tasks.length === 0 && (
               <li className="task-empty">Aucune priorité pour aujourd’hui.</li>
             )}
-            {tasks.map((t) => (
-              <li key={t.id} className="task-row">
-                <input
-                  type="checkbox"
-                  checked={t.done}
-                  onChange={() => patchTask(t, { done: !t.done })}
-                  aria-label={`Marquer « ${t.text} » comme ${t.done ? 'à faire' : 'terminé'}`}
+            {tasks.map((t) =>
+              t.id === editingId ? (
+                <TaskInlineEditor
+                  key={t.id}
+                  task={t}
+                  onClose={() => setEditingId(null)}
+                  onPatch={patchTask}
+                  onDelete={removeTask}
                 />
-                <input
-                  type="time"
-                  className="task-time-input"
-                  defaultValue={t.start_time ?? ''}
-                  aria-label={`Heure de début de « ${t.text} »`}
-                  onChange={(e) => patchTask(t, { start_time: e.target.value || null })}
-                />
-                <input
-                  type="time"
-                  className="task-time-input"
-                  defaultValue={t.end_time ?? ''}
-                  aria-label={`Heure de fin de « ${t.text} »`}
-                  onChange={(e) => patchTask(t, { end_time: e.target.value || null })}
-                />
-                <input
-                  type="text"
-                  className={`task-text-input${t.done ? ' done' : ''}`}
-                  defaultValue={t.text}
-                  aria-label="Texte de la tâche"
-                  onBlur={(e) => {
-                    const v = e.target.value.trim();
-                    if (v && v !== t.text) patchTask(t, { text: v });
-                    else e.target.value = t.text;
-                  }}
-                />
-                <CategorySelect
-                  value={t.category}
-                  onChange={(v) => patchTask(t, { category: v })}
-                  ariaLabel={`Catégorie de « ${t.text} »`}
-                />
-                <button
-                  type="button"
-                  className="del-btn"
-                  onClick={() => removeTask(t.id)}
-                  aria-label={`Supprimer « ${t.text} »`}
-                >
-                  ×
-                </button>
-              </li>
-            ))}
+              ) : (
+                <li key={t.id} className={`planner-task-line${t.done ? ' done' : ''}`}>
+                  <TaskLineBody task={t} onPatch={patchTask} onOpen={setEditingId} />
+                </li>
+              ),
+            )}
           </ul>
 
           <div className="add-row">
             <input
-              type="time"
-              className="task-time-input"
-              value={newStart}
-              aria-label="Heure de début (optionnelle)"
-              onChange={(e) => setNewStart(e.target.value)}
-            />
-            <input
-              type="time"
-              className="task-time-input"
-              value={newEnd}
-              aria-label="Heure de fin (optionnelle)"
-              onChange={(e) => setNewEnd(e.target.value)}
-            />
-            <input
               type="text"
               value={newText}
-              placeholder="Nouvelle tâche…"
-              aria-label="Nouvelle tâche"
+              placeholder="9-10h30 Nouvelle tâche… (heure optionnelle)"
+              aria-label="Nouvelle tâche (créneau 24h optionnel en tête, ex : 9-10h30 Réviser)"
               onChange={(e) => setNewText(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') addTask();

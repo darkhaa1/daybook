@@ -1,31 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import type { PlannerDay, PlannerWeek, Task } from '../types.ts';
 import { api, ApiError } from '../lib/api.ts';
 import { addDays, formatDayMonth, formatShort, mondayOf, todayISO, WEEKDAY_LABELS } from '../lib/date.ts';
+import { extractLeadingSlot } from '../lib/timeText.ts';
 import { useCategories } from '../context/CategoriesContext.tsx';
-import { CategoryDot } from './CategoryDot.tsx';
-
-type TaskPatch = Partial<{
-  done: boolean;
-  text: string;
-  category: string;
-  start_time: string | null;
-  end_time: string | null;
-}>;
+import { TaskInlineEditor, TaskLineBody, type TaskPatch } from './TaskItem.tsx';
 
 // Position d'insertion visée pendant un drag : index 0..tasks.length dans la
 // liste affichée du jour.
 interface DropHint {
   day: string;
   index: number;
-}
-
-// Créneau compact "08:00–09:00" en lecture ; "—" si non planifiée.
-function formatSlot(task: Task): string {
-  if (task.start_time && task.end_time) return `${task.start_time}–${task.end_time}`;
-  if (task.start_time) return task.start_time;
-  if (task.end_time) return `–${task.end_time}`;
-  return '—';
 }
 
 // --- Helpers heures (minutes depuis minuit, bornées à la journée) ---
@@ -87,9 +72,18 @@ export function PlannerView({ referenceDay }: { referenceDay: string }) {
     }
   }
 
-  async function addTask(day: string, data: { text: string; category: string }) {
+  async function addTask(
+    day: string,
+    data: { text: string; category: string; start_time: string | null; end_time: string | null },
+  ) {
     try {
-      await api.createTask({ text: data.text, category: data.category, day });
+      await api.createTask({
+        text: data.text,
+        category: data.category,
+        day,
+        start_time: data.start_time,
+        end_time: data.end_time,
+      });
       await reload();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Ajout impossible');
@@ -271,7 +265,10 @@ interface ColumnProps {
   onStartEdit: (id: number) => void;
   onCloseEdit: () => void;
   onOpenDay: (day: string) => void;
-  onAddTask: (day: string, data: { text: string; category: string }) => void;
+  onAddTask: (
+    day: string,
+    data: { text: string; category: string; start_time: string | null; end_time: string | null },
+  ) => void;
   onPatchTask: (task: Task, data: TaskPatch) => void;
   onDeleteTask: (id: number) => void;
   onDragStartTask: (id: number) => void;
@@ -305,13 +302,13 @@ function PlannerDayColumn({
   const hint = dropHint && dropHint.day === data.day ? dropHint : null;
   const lastIndex = data.tasks.length - 1;
 
-  // Ajout rapide : Enter crée la tâche sans horaire, première catégorie active
-  // par défaut — l'édition fine se fait ensuite via le mode édition.
+  // Ajout rapide : Enter crée la tâche, première catégorie active par défaut.
+  // L'heure se tape dans le texte ("9-10h30 Sport") — sinon tâche sans horaire.
   function submit() {
-    const text = newText.trim();
+    const { start, end, text } = extractLeadingSlot(newText);
     const first = active[0];
     if (!text || !first) return;
-    onAddTask(data.day, { text, category: first.key });
+    onAddTask(data.day, { text, category: first.key, start_time: start, end_time: end });
     setNewText('');
   }
 
@@ -345,7 +342,7 @@ function PlannerDayColumn({
         {data.tasks.length === 0 && <li className="planner-empty">—</li>}
         {data.tasks.map((t, i) =>
           t.id === editingId ? (
-            <PlannerTaskEditor
+            <TaskInlineEditor
               key={t.id}
               task={t}
               onClose={onCloseEdit}
@@ -377,9 +374,9 @@ function PlannerDayColumn({
         <input
           type="text"
           value={newText}
-          placeholder="+ tâche…"
+          placeholder="+ tâche (ex: 9-10 Sport)"
           disabled={noCategory}
-          aria-label={`Nouvelle tâche le ${label}`}
+          aria-label={`Nouvelle tâche le ${label} (créneau 24h optionnel en tête)`}
           title={noCategory ? 'Aucune catégorie active — gérez-les dans l’onglet Catégories.' : undefined}
           onChange={(e) => setNewText(e.target.value)}
           onKeyDown={(e) => {
@@ -461,25 +458,7 @@ function PlannerTaskLine({
         if (Number.isInteger(id) && id > 0) onDropTask(id, day, dropIndexFromEvent(e));
       }}
     >
-      <button
-        type="button"
-        className="planner-task-toggle"
-        aria-pressed={task.done}
-        aria-label={`Marquer « ${task.text} » comme ${task.done ? 'à faire' : 'terminé'}`}
-        onClick={() => onPatch(task, { done: !task.done })}
-      >
-        <CategoryDot categoryKey={task.category} />
-      </button>
-      <button
-        type="button"
-        className="planner-task-open"
-        title={task.text}
-        aria-label={`Modifier « ${task.text} »`}
-        onClick={() => onOpen(task.id)}
-      >
-        <span className="planner-task-slot">{formatSlot(task)}</span>
-        <span className="planner-task-title">{task.text}</span>
-      </button>
+      <TaskLineBody task={task} onPatch={onPatch} onOpen={onOpen} />
       <span
         className="planner-task-grip"
         title="Glisser pour déplacer"
@@ -498,87 +477,3 @@ function PlannerTaskLine({
   );
 }
 
-// --- Mode édition inline : la ligne devient éditable sur place (heures + texte),
-// une seule à la fois. Enter valide, Escape annule (texte non commité), clic
-// hors de la ligne commit + ferme. × supprime.
-interface EditorProps {
-  task: Task;
-  onClose: () => void;
-  onPatch: (task: Task, data: TaskPatch) => void;
-  onDelete: (id: number) => void;
-}
-
-function PlannerTaskEditor({ task, onClose, onPatch, onDelete }: EditorProps) {
-  const cardRef = useRef<HTMLLIElement | null>(null);
-  const textRef = useRef<HTMLInputElement | null>(null);
-
-  function commitText() {
-    const v = textRef.current?.value.trim();
-    if (v && v !== task.text) onPatch(task, { text: v });
-  }
-
-  // Clic hors de la ligne -> commit du texte en cours puis fermeture.
-  useEffect(() => {
-    function onDocMouseDown(e: MouseEvent) {
-      const card = cardRef.current;
-      if (!card || !(e.target instanceof Node) || card.contains(e.target)) return;
-      const v = textRef.current?.value.trim();
-      if (v && v !== task.text) onPatch(task, { text: v });
-      onClose();
-    }
-    document.addEventListener('mousedown', onDocMouseDown);
-    return () => document.removeEventListener('mousedown', onDocMouseDown);
-  }, [task, onPatch, onClose]);
-
-  return (
-    <li
-      className="planner-task-inline-edit"
-      ref={cardRef}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          commitText();
-          onClose();
-        } else if (e.key === 'Escape') {
-          e.preventDefault();
-          onClose();
-        }
-      }}
-    >
-      <div className="planner-inline-times">
-        <input
-          type="time"
-          defaultValue={task.start_time ?? ''}
-          aria-label={`Heure de début de « ${task.text} »`}
-          onChange={(e) => onPatch(task, { start_time: e.target.value || null })}
-        />
-        <span className="planner-inline-dash" aria-hidden="true">
-          –
-        </span>
-        <input
-          type="time"
-          defaultValue={task.end_time ?? ''}
-          aria-label={`Heure de fin de « ${task.text} »`}
-          onChange={(e) => onPatch(task, { end_time: e.target.value || null })}
-        />
-        <button
-          type="button"
-          className="del-btn planner-inline-del"
-          onClick={() => onDelete(task.id)}
-          aria-label={`Supprimer « ${task.text} »`}
-          title="Supprimer"
-        >
-          ×
-        </button>
-      </div>
-      <input
-        ref={textRef}
-        type="text"
-        defaultValue={task.text}
-        autoFocus
-        aria-label="Texte de la tâche"
-        onBlur={commitText}
-      />
-    </li>
-  );
-}
