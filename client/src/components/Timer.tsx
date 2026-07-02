@@ -1,13 +1,24 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { FocusSession } from '../types.ts';
 import { CategorySelect } from './CategorySelect.tsx';
+import { CategoryDot } from './CategoryDot.tsx';
 import { useCategories } from '../context/CategoriesContext.tsx';
 
-const WORK = 25 * 60;
-const BREAK = 5 * 60;
 const CIRC = 515.2; // 2πr, r = 82 (identique à la maquette)
 
 type Mode = 'focus' | 'break';
+
+// Durées réglables, persistées comme préférence d'affichage (même famille que
+// console.activeTab) — les données métier restent en SQLite.
+const KEY_WORK = 'console.timer.workMin';
+const KEY_BREAK = 'console.timer.breakMin';
+const MIN_MINUTES = 1;
+const MAX_MINUTES = 180;
+
+function loadMinutes(key: string, fallback: number): number {
+  const v = Number(localStorage.getItem(key) ?? '');
+  return Number.isInteger(v) && v >= MIN_MINUTES && v <= MAX_MINUTES ? v : fallback;
+}
 
 interface Props {
   sessions: FocusSession[];
@@ -22,12 +33,39 @@ function fmt(total: number): string {
   return `${m}:${s}`;
 }
 
+// "13:40–14:05" reconstruit depuis ended_at et la durée de la session.
+function sessionRange(s: FocusSession): string {
+  const end = new Date(s.ended_at);
+  const start = new Date(end.getTime() - s.duration_sec * 1000);
+  const f = (d: Date) =>
+    `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  return `${f(start)}–${f(end)}`;
+}
+
+function formatTotal(sec: number): string {
+  const h = Math.floor(sec / 3600);
+  const m = Math.round((sec % 3600) / 60);
+  return h > 0 ? `${h}h${String(m).padStart(2, '0')}` : `${m}min`;
+}
+
 export function Timer({ sessions, onSessionComplete }: Props) {
-  const { active, all, colorOf } = useCategories();
+  const { active } = useCategories();
   const [category, setCategory] = useState('');
   const [mode, setMode] = useState<Mode>('focus');
-  const [remaining, setRemaining] = useState(WORK);
+  const [workMin, setWorkMin] = useState(() => loadMinutes(KEY_WORK, 25));
+  const [breakMin, setBreakMin] = useState(() => loadMinutes(KEY_BREAK, 5));
+  // Champs libres (permettent d'effacer/taper), renormalisés au blur.
+  const [workStr, setWorkStr] = useState(() => String(loadMinutes(KEY_WORK, 25)));
+  const [breakStr, setBreakStr] = useState(() => String(loadMinutes(KEY_BREAK, 5)));
+  const [remaining, setRemaining] = useState(() => loadMinutes(KEY_WORK, 25) * 60);
   const [running, setRunning] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem(KEY_WORK, String(workMin));
+  }, [workMin]);
+  useEffect(() => {
+    localStorage.setItem(KEY_BREAK, String(breakMin));
+  }, [breakMin]);
 
   // Sélectionne la première catégorie active dès qu'elle est disponible.
   useEffect(() => {
@@ -40,8 +78,12 @@ export function Timer({ sessions, onSessionComplete }: Props) {
   // Refs pour lire les valeurs courantes dans le callback d'intervalle.
   const modeRef = useRef(mode);
   const categoryRef = useRef(category);
+  const workSecRef = useRef(workMin * 60);
+  const breakSecRef = useRef(breakMin * 60);
   modeRef.current = mode;
   categoryRef.current = category;
+  workSecRef.current = workMin * 60;
+  breakSecRef.current = breakMin * 60;
 
   useEffect(() => {
     if (!running) return;
@@ -50,18 +92,34 @@ export function Timer({ sessions, onSessionComplete }: Props) {
         if (prev > 1) return prev - 1;
         // Fin de la phase courante.
         if (modeRef.current === 'focus') {
-          onSessionComplete(categoryRef.current, WORK);
+          onSessionComplete(categoryRef.current, workSecRef.current);
           setMode('break');
           setRunning(false);
-          return BREAK;
+          return breakSecRef.current;
         }
         setMode('focus');
         setRunning(false);
-        return WORK;
+        return workSecRef.current;
       });
     }, 1000);
     return () => clearInterval(id);
   }, [running, onSessionComplete]);
+
+  // Applique une durée saisie (si valide) ; recale le compteur si la phase
+  // concernée est affichée et à l'arrêt.
+  function applyMinutes(raw: string, target: Mode) {
+    const v = Number(raw);
+    if (!Number.isInteger(v) || v < MIN_MINUTES || v > MAX_MINUTES) return;
+    if (target === 'focus') setWorkMin(v);
+    else setBreakMin(v);
+    if (!running && mode === target) setRemaining(v * 60);
+  }
+
+  function switchMode(m: Mode) {
+    if (running || mode === m) return;
+    setMode(m);
+    setRemaining((m === 'focus' ? workMin : breakMin) * 60);
+  }
 
   function toggle() {
     setRunning((r) => !r);
@@ -69,28 +127,14 @@ export function Timer({ sessions, onSessionComplete }: Props) {
 
   function reset() {
     setRunning(false);
-    setMode('focus');
-    setRemaining(WORK);
+    setRemaining((mode === 'focus' ? workMin : breakMin) * 60);
   }
 
-  const total = mode === 'focus' ? WORK : BREAK;
+  const total = (mode === 'focus' ? workMin : breakMin) * 60;
   const frac = remaining / total;
   const dashoffset = CIRC * (1 - frac);
 
-  // Compte des sessions focus du jour par catégorie (données réelles).
-  const tally = new Map<string, number>();
-  for (const s of sessions) {
-    tally.set(s.category, (tally.get(s.category) ?? 0) + 1);
-  }
-
-  // Catégories actives + toute catégorie ayant une session aujourd'hui (même archivée depuis).
-  const tallyKeys = useMemo(() => {
-    const activeKeys = active.map((c) => c.key);
-    const sessionKeys = sessions.map((s) => s.category);
-    const merged = Array.from(new Set([...activeKeys, ...sessionKeys]));
-    const orderOf = new Map(all.map((c, i) => [c.key, i]));
-    return merged.sort((a, b) => (orderOf.get(a) ?? 999) - (orderOf.get(b) ?? 999));
-  }, [active, all, sessions]);
+  const totalFocusSec = sessions.reduce((sum, s) => sum + s.duration_sec, 0);
 
   return (
     <section className="panel timer-wrap">
@@ -136,6 +180,62 @@ export function Timer({ sessions, onSessionComplete }: Props) {
         </div>
       </div>
 
+      {/* Durées réglables + bascule de phase (désactivées pendant le décompte). */}
+      <div className="timer-settings">
+        <div className="timer-setting">
+          <button
+            type="button"
+            className={`btn${mode === 'focus' ? ' primary' : ''}`}
+            aria-pressed={mode === 'focus'}
+            disabled={running}
+            onClick={() => switchMode('focus')}
+          >
+            Focus
+          </button>
+          <input
+            type="number"
+            className="timer-min"
+            min={MIN_MINUTES}
+            max={MAX_MINUTES}
+            value={workStr}
+            disabled={running}
+            aria-label="Durée focus (minutes)"
+            onChange={(e) => {
+              setWorkStr(e.target.value);
+              applyMinutes(e.target.value, 'focus');
+            }}
+            onBlur={() => setWorkStr(String(workMin))}
+          />
+          <span className="timer-min-unit">min</span>
+        </div>
+        <div className="timer-setting">
+          <button
+            type="button"
+            className={`btn${mode === 'break' ? ' primary' : ''}`}
+            aria-pressed={mode === 'break'}
+            disabled={running}
+            onClick={() => switchMode('break')}
+          >
+            Pause
+          </button>
+          <input
+            type="number"
+            className="timer-min"
+            min={MIN_MINUTES}
+            max={MAX_MINUTES}
+            value={breakStr}
+            disabled={running}
+            aria-label="Durée pause (minutes)"
+            onChange={(e) => {
+              setBreakStr(e.target.value);
+              applyMinutes(e.target.value, 'break');
+            }}
+            onBlur={() => setBreakStr(String(breakMin))}
+          />
+          <span className="timer-min-unit">min</span>
+        </div>
+      </div>
+
       <div className="cat-select-row">
         <label htmlFor="active-cat">Catégorie active</label>
         <CategorySelect id="active-cat" value={category} onChange={setCategory} />
@@ -156,22 +256,27 @@ export function Timer({ sessions, onSessionComplete }: Props) {
         </button>
       </div>
 
-      <div className="sessions-tally">
-        {tallyKeys.map((key) => {
-          const n = tally.get(key) ?? 0;
-          return (
-            <div className="row" key={key}>
-              <span>{key}</span>
-              {n > 0 ? (
-                <span className="dots" style={{ color: colorOf(key) }}>
-                  {'●'.repeat(n)}
-                </span>
-              ) : (
-                <span style={{ opacity: 0.4 }}>—</span>
-              )}
-            </div>
-          );
-        })}
+      {/* Journal réel des sessions du jour — vide au départ, se remplit au fil
+          des focus terminés (quand, sur quoi, combien de temps). */}
+      <div className="focus-log">
+        {sessions.length === 0 && (
+          <p className="muted-note">Aucune session pour l'instant — lance un focus.</p>
+        )}
+        {sessions.map((s) => (
+          <div className="row" key={s.id}>
+            <span className="focus-log-range">{sessionRange(s)}</span>
+            <span className="focus-log-cat">
+              <CategoryDot categoryKey={s.category} /> {s.category}
+            </span>
+            <span className="focus-log-dur">{Math.round(s.duration_sec / 60)}min</span>
+          </div>
+        ))}
+        {sessions.length > 0 && (
+          <div className="focus-log-total">
+            <span>Total focus</span>
+            <span>{formatTotal(totalFocusSec)}</span>
+          </div>
+        )}
       </div>
     </section>
   );

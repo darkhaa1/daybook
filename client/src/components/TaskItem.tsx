@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Task } from '../types.ts';
+import { nowHHMM } from '../lib/date.ts';
 import { CategoryDot } from './CategoryDot.tsx';
 import { CategorySelect } from './CategorySelect.tsx';
 import { SlotField } from './SlotField.tsx';
@@ -21,6 +22,45 @@ export function formatSlot(task: Task): string {
   if (task.start_time) return task.start_time;
   if (task.end_time) return `–${task.end_time}`;
   return '—';
+}
+
+// Heure courante "HH:MM", rafraîchie toutes les 30 s — pour le repère
+// « maintenant » et le surlignage de la tâche en cours.
+export function useNowHHMM(): string {
+  const [now, setNow] = useState(() => nowHHMM());
+  useEffect(() => {
+    const id = setInterval(() => setNow(nowHHMM()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+  return now;
+}
+
+// La tâche est-elle en cours à l'instant `now` ? (créneau complet requis)
+export function isOngoing(task: Task, now: string): boolean {
+  return task.start_time !== null && task.end_time !== null
+    ? task.start_time <= now && now < task.end_time
+    : false;
+}
+
+// Index d'insertion du repère « maintenant » dans une liste triée comme le
+// serveur (planifiées chrono puis non-planifiées) : après la dernière tâche
+// déjà commencée. null si aucune tâche planifiée (repère sans signification).
+export function nowLineIndex(tasks: Task[], now: string): number | null {
+  if (!tasks.some((t) => t.start_time !== null)) return null;
+  let idx = 0;
+  tasks.forEach((t, i) => {
+    if (t.start_time !== null && t.start_time <= now) idx = i + 1;
+  });
+  return idx;
+}
+
+// Repère visuel « maintenant » inséré dans la liste des tâches.
+export function NowLine({ now }: { now: string }) {
+  return (
+    <li className="now-line" aria-hidden="true">
+      <span>{now}</span>
+    </li>
+  );
 }
 
 interface BodyProps {

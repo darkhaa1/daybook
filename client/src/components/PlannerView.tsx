@@ -1,10 +1,18 @@
-import { useRef, useState, useEffect } from 'react';
+import { Fragment, useRef, useState, useEffect } from 'react';
 import type { PlannerDay, PlannerWeek, Task } from '../types.ts';
 import { api, ApiError } from '../lib/api.ts';
 import { addDays, formatDayMonth, formatShort, mondayOf, todayISO, WEEKDAY_LABELS } from '../lib/date.ts';
 import { extractLeadingSlot } from '../lib/timeText.ts';
 import { useCategories } from '../context/CategoriesContext.tsx';
-import { TaskInlineEditor, TaskLineBody, type TaskPatch } from './TaskItem.tsx';
+import {
+  isOngoing,
+  NowLine,
+  nowLineIndex,
+  TaskInlineEditor,
+  TaskLineBody,
+  useNowHHMM,
+  type TaskPatch,
+} from './TaskItem.tsx';
 
 // Position d'insertion visée pendant un drag : index 0..tasks.length dans la
 // liste affichée du jour.
@@ -38,6 +46,8 @@ export function PlannerView({ referenceDay }: { referenceDay: string }) {
   const [dragId, setDragId] = useState<number | null>(null);
   const [dropHint, setDropHint] = useState<DropHint | null>(null);
   const today = todayISO();
+  // Heure courante pour le repère « maintenant » sur la colonne du jour.
+  const now = useNowHHMM();
 
   useEffect(() => {
     let alive = true;
@@ -230,6 +240,7 @@ export function PlannerView({ referenceDay }: { referenceDay: string }) {
                 data={d}
                 label={WEEKDAY_LABELS[i] ?? d.day}
                 isToday={d.day === today}
+                now={now}
                 editingId={editingId}
                 dragId={dragId}
                 dropHint={dropHint}
@@ -259,6 +270,7 @@ interface ColumnProps {
   data: PlannerDay;
   label: string;
   isToday: boolean;
+  now: string;
   editingId: number | null;
   dragId: number | null;
   dropHint: DropHint | null;
@@ -281,6 +293,7 @@ function PlannerDayColumn({
   data,
   label,
   isToday,
+  now,
   editingId,
   dragId,
   dropHint,
@@ -301,6 +314,8 @@ function PlannerDayColumn({
 
   const hint = dropHint && dropHint.day === data.day ? dropHint : null;
   const lastIndex = data.tasks.length - 1;
+  // Repère « maintenant » uniquement sur la colonne du jour courant.
+  const nowIdx = isToday ? nowLineIndex(data.tasks, now) : null;
 
   // Ajout rapide : Enter crée la tâche, première catégorie active par défaut.
   // L'heure se tape dans le texte ("9-10h30 Sport") — sinon tâche sans horaire.
@@ -340,34 +355,37 @@ function PlannerDayColumn({
         }}
       >
         {data.tasks.length === 0 && <li className="planner-empty">—</li>}
-        {data.tasks.map((t, i) =>
-          t.id === editingId ? (
-            <TaskInlineEditor
-              key={t.id}
-              task={t}
-              onClose={onCloseEdit}
-              onPatch={onPatchTask}
-              onDelete={onDeleteTask}
-            />
-          ) : (
-            <PlannerTaskLine
-              key={t.id}
-              task={t}
-              day={data.day}
-              index={i}
-              dragActive={dragId !== null}
-              dragging={dragId === t.id}
-              dropBefore={hint !== null && hint.index === i}
-              dropAfter={hint !== null && i === lastIndex && hint.index === data.tasks.length}
-              onPatch={onPatchTask}
-              onOpen={onStartEdit}
-              onDragStart={onDragStartTask}
-              onDragEnd={onDragEndTask}
-              onDropHint={onDropHint}
-              onDropTask={onDropTask}
-            />
-          ),
-        )}
+        {data.tasks.map((t, i) => (
+          <Fragment key={t.id}>
+            {nowIdx === i && <NowLine now={now} />}
+            {t.id === editingId ? (
+              <TaskInlineEditor
+                task={t}
+                onClose={onCloseEdit}
+                onPatch={onPatchTask}
+                onDelete={onDeleteTask}
+              />
+            ) : (
+              <PlannerTaskLine
+                task={t}
+                day={data.day}
+                index={i}
+                current={isToday && isOngoing(t, now)}
+                dragActive={dragId !== null}
+                dragging={dragId === t.id}
+                dropBefore={hint !== null && hint.index === i}
+                dropAfter={hint !== null && i === lastIndex && hint.index === data.tasks.length}
+                onPatch={onPatchTask}
+                onOpen={onStartEdit}
+                onDragStart={onDragStartTask}
+                onDragEnd={onDragEndTask}
+                onDropHint={onDropHint}
+                onDropTask={onDropTask}
+              />
+            )}
+          </Fragment>
+        ))}
+        {nowIdx !== null && nowIdx === data.tasks.length && <NowLine now={now} />}
       </ul>
 
       <div className="planner-add">
@@ -394,6 +412,7 @@ interface LineProps {
   task: Task;
   day: string;
   index: number;
+  current: boolean;
   dragActive: boolean;
   dragging: boolean;
   dropBefore: boolean;
@@ -410,6 +429,7 @@ function PlannerTaskLine({
   task,
   day,
   index,
+  current,
   dragActive,
   dragging,
   dropBefore,
@@ -433,6 +453,7 @@ function PlannerTaskLine({
   const classes = [
     'planner-task-line',
     task.done ? 'done' : '',
+    current ? 'now-current' : '',
     dragging ? 'dragging' : '',
     dropBefore ? 'drop-before' : '',
     dropAfter ? 'drop-after' : '',

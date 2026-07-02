@@ -8,6 +8,12 @@ export function todayISO(): string {
   return `${y}-${m}-${day}`;
 }
 
+// Heure locale courante "HH:MM" (24h) — comparable aux start_time/end_time.
+export function nowHHMM(): string {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 // Noms des jours, convention 0=lundi..6=dimanche (aligne day_of_week du back).
 export const WEEKDAY_LABELS = [
   'Lundi',

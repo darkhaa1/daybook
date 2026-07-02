@@ -1,9 +1,17 @@
-import { useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
 import type { FocusSession, Task } from '../types.ts';
 import { api, ApiError } from '../lib/api.ts';
 import { extractLeadingSlot } from '../lib/timeText.ts';
 import { CategorySelect } from './CategorySelect.tsx';
-import { TaskInlineEditor, TaskLineBody, type TaskPatch } from './TaskItem.tsx';
+import {
+  isOngoing,
+  NowLine,
+  nowLineIndex,
+  TaskInlineEditor,
+  TaskLineBody,
+  useNowHHMM,
+  type TaskPatch,
+} from './TaskItem.tsx';
 import { Timer } from './Timer.tsx';
 import { useCategories } from '../context/CategoriesContext.tsx';
 
@@ -139,6 +147,10 @@ export function TodayView({ day }: { day: string }) {
   const total = tasks.length;
   const pct = total ? Math.round((done / total) * 100) : 0;
 
+  // Repère « maintenant » : inséré à la position chronologique courante.
+  const now = useNowHHMM();
+  const nowIdx = loading ? null : nowLineIndex(tasks, now);
+
   return (
     <>
       {error && <div className="error-banner" role="alert">{error}</div>}
@@ -153,21 +165,28 @@ export function TodayView({ day }: { day: string }) {
             {!loading && tasks.length === 0 && (
               <li className="task-empty">Aucune priorité pour aujourd’hui.</li>
             )}
-            {tasks.map((t) =>
-              t.id === editingId ? (
-                <TaskInlineEditor
-                  key={t.id}
-                  task={t}
-                  onClose={() => setEditingId(null)}
-                  onPatch={patchTask}
-                  onDelete={removeTask}
-                />
-              ) : (
-                <li key={t.id} className={`planner-task-line${t.done ? ' done' : ''}`}>
-                  <TaskLineBody task={t} onPatch={patchTask} onOpen={setEditingId} />
-                </li>
-              ),
-            )}
+            {tasks.map((t, i) => (
+              <Fragment key={t.id}>
+                {nowIdx === i && <NowLine now={now} />}
+                {t.id === editingId ? (
+                  <TaskInlineEditor
+                    task={t}
+                    onClose={() => setEditingId(null)}
+                    onPatch={patchTask}
+                    onDelete={removeTask}
+                  />
+                ) : (
+                  <li
+                    className={`planner-task-line${t.done ? ' done' : ''}${
+                      isOngoing(t, now) ? ' now-current' : ''
+                    }`}
+                  >
+                    <TaskLineBody task={t} onPatch={patchTask} onOpen={setEditingId} />
+                  </li>
+                )}
+              </Fragment>
+            ))}
+            {nowIdx !== null && nowIdx === tasks.length && <NowLine now={now} />}
           </ul>
 
           <div className="add-row">
