@@ -1128,6 +1128,45 @@ input[type='color'] {
   color: var(--amber);
 }
 
+/* Poignée de drag (≡) à droite de chaque ligne. */
+.planner-task-grip {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--muted);
+  padding: 10px 4px 10px 9px;
+  flex-shrink: 0;
+  cursor: grab;
+  user-select: none;
+}
+
+.planner-task-grip:hover {
+  color: var(--ink);
+}
+
+.planner-task-grip:active {
+  cursor: grabbing;
+}
+
+/* Retours visuels du drag & drop. */
+.planner-task-line.dragging {
+  opacity: 0.35;
+}
+
+.planner-task-line.drop-before {
+  box-shadow: inset 0 2px 0 var(--amber);
+}
+
+.planner-task-line.drop-after {
+  box-shadow: inset 0 -2px 0 var(--amber);
+}
+
+.planner-tasks.drop-in {
+  outline: 1px dashed var(--amber);
+  outline-offset: -4px;
+  border-radius: 2px;
+}
+
 /* Mode édition inline : la ligne devient éditable sur place (heures + texte). */
 .planner-task-inline-edit {
   border-left: 2px solid var(--amber);
@@ -1165,20 +1204,8 @@ input[type='color'] {
   flex-shrink: 0;
 }
 
-.planner-inline-actions {
+.planner-inline-del {
   margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.planner-inline-actions .btn {
-  padding: 4px 9px;
-  font-size: 12px;
-  line-height: 1.2;
-}
-
-.planner-inline-actions .del-btn {
   font-size: 16px;
 }
 
