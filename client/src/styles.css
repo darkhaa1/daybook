@@ -993,16 +993,16 @@ input[type='color'] {
 
 .planner-day-head {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
   width: 100%;
   text-align: left;
   background: var(--panel);
   border: none;
   border-bottom: 1px solid var(--line);
   color: var(--ink);
-  padding: 8px 10px;
+  padding: 6px 9px;
   cursor: pointer;
 }
 
@@ -1028,8 +1028,7 @@ input[type='color'] {
 }
 
 .planner-badge {
-  align-self: flex-start;
-  margin-top: 3px;
+  margin-left: auto;
   font-family: 'IBM Plex Mono', monospace;
   font-size: 9px;
   letter-spacing: 0.06em;
@@ -1043,7 +1042,7 @@ input[type='color'] {
 .planner-tasks {
   list-style: none;
   margin: 0;
-  padding: 8px;
+  padding: 2px 8px;
   flex: 1;
 }
 
@@ -1052,97 +1051,145 @@ input[type='color'] {
   font-family: 'IBM Plex Mono', monospace;
   font-size: 12px;
   text-align: center;
-  padding: 8px 0;
+  padding: 7px 0;
 }
 
-.planner-task {
-  border: 1px solid var(--line-soft);
-  border-radius: 2px;
-  padding: 7px 8px;
-  margin-bottom: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.planner-task:last-child {
-  margin-bottom: 0;
-}
-
-.planner-task-top {
+/* Mode lecture : une ligne compacte par tâche, façon rangée de cartouche.
+   Zéro input/select/bouton visible — pastille = toggle done, corps = édition. */
+.planner-task-line {
   display: flex;
   align-items: center;
-  gap: 6px;
+  border-bottom: 1px solid var(--line-soft);
 }
 
-.planner-task-top input[type='checkbox'] {
-  width: 15px;
-  height: 15px;
-  accent-color: var(--amber);
+.planner-task-line:last-child {
+  border-bottom: none;
+}
+
+.planner-task-line.done {
+  opacity: 0.55;
+}
+
+.planner-task-line.done .planner-task-title {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+.planner-task-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px 6px 8px 2px;
+  line-height: 0;
   flex-shrink: 0;
 }
 
-.planner-task-top .task-text-input {
+.planner-task-open {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--ink);
+  font-family: inherit;
   flex: 1;
   min-width: 0;
-  font-size: 13px;
-  padding: 5px 7px;
-}
-
-.planner-times {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.planner-times .task-time-input {
-  width: 78px;
-}
-
-.planner-task-controls {
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
+  gap: 7px;
+  padding: 5px 2px 5px 0;
+  text-align: left;
 }
 
-.planner-task-controls select {
+.planner-task-slot {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.planner-task-title {
+  font-size: 12.5px;
   flex: 1;
   min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.planner-move {
-  width: 100%;
+.planner-task-open:hover .planner-task-title {
+  color: var(--amber);
 }
 
-.planner-add {
-  border-top: 1px solid var(--line-soft);
+/* Mode édition : carte complète, une seule ouverte à la fois. */
+.planner-task-edit {
+  border: 1px solid var(--amber);
+  border-radius: 2px;
+  background: var(--panel);
   padding: 8px;
+  margin: 5px 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.planner-task-edit input[type='text'] {
+  flex: none;
+  width: 100%;
+  min-width: 0;
+  font-size: 12.5px;
+  padding: 5px 7px;
+}
+
+.planner-task-edit select {
+  width: 100%;
+  min-width: 0;
+  font-size: 11px;
+  padding: 5px 6px;
+}
+
+.planner-edit-times {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.planner-task-edit input[type='time'] {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+  font-size: 11px;
+  padding: 4px 5px;
+}
+
+.planner-edit-dash {
+  color: var(--muted);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.planner-edit-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.planner-edit-actions .btn {
+  flex: 1;
+  padding: 5px 8px;
+  font-size: 11px;
+}
+
+/* Ajout rapide : un seul champ texte, Enter = créer sans horaire. */
+.planner-add {
+  border-top: 1px solid var(--line-soft);
+  padding: 6px 8px;
 }
 
 .planner-add input[type='text'] {
   width: 100%;
   min-width: 0;
-  font-size: 13px;
+  font-size: 12px;
   padding: 5px 7px;
-}
-
-.planner-add-row {
-  display: flex;
-  gap: 6px;
-}
-
-.planner-add-row select {
-  flex: 1;
-  min-width: 0;
-}
-
-.planner-add-row .btn {
-  padding: 5px 12px;
-  flex-shrink: 0;
 }
 
 /* Cartouche */

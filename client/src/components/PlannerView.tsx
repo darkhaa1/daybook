@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { PlannerDay, PlannerWeek, Task } from '../types.ts';
 import { api, ApiError } from '../lib/api.ts';
 import { addDays, formatDayMonth, formatShort, mondayOf, todayISO, WEEKDAY_LABELS } from '../lib/date.ts';
@@ -14,16 +14,27 @@ type TaskPatch = Partial<{
   end_time: string | null;
 }>;
 
+// Créneau compact "08:00–09:00" en lecture ; "—" si non planifiée.
+function formatSlot(task: Task): string {
+  if (task.start_time && task.end_time) return `${task.start_time}–${task.end_time}`;
+  if (task.start_time) return task.start_time;
+  if (task.end_time) return `–${task.end_time}`;
+  return '—';
+}
+
 export function PlannerView({ referenceDay }: { referenceDay: string }) {
   const [weekStart, setWeekStart] = useState(() => mondayOf(referenceDay));
   const [planner, setPlanner] = useState<PlannerWeek | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Une seule tâche en édition à la fois, toutes colonnes confondues.
+  const [editingId, setEditingId] = useState<number | null>(null);
   const today = todayISO();
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
+    setEditingId(null);
     api
       .getPlanner(weekStart)
       .then((data) => {
@@ -75,6 +86,7 @@ export function PlannerView({ referenceDay }: { referenceDay: string }) {
     if (day === task.day) return;
     try {
       await api.updateTask(task.id, { day });
+      setEditingId(null);
       await reload();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Déplacement impossible');
@@ -84,6 +96,7 @@ export function PlannerView({ referenceDay }: { referenceDay: string }) {
   async function deleteTask(id: number) {
     try {
       await api.deleteTask(id);
+      setEditingId(null);
       await reload();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Suppression impossible');
@@ -143,6 +156,9 @@ export function PlannerView({ referenceDay }: { referenceDay: string }) {
                 label={WEEKDAY_LABELS[i] ?? d.day}
                 isToday={d.day === today}
                 weekDays={weekDays}
+                editingId={editingId}
+                onStartEdit={setEditingId}
+                onCloseEdit={() => setEditingId(null)}
                 onOpenDay={openDay}
                 onAddTask={addTask}
                 onPatchTask={patchTask}
@@ -162,6 +178,9 @@ interface ColumnProps {
   label: string;
   isToday: boolean;
   weekDays: string[];
+  editingId: number | null;
+  onStartEdit: (id: number) => void;
+  onCloseEdit: () => void;
   onOpenDay: (day: string) => void;
   onAddTask: (day: string, data: { text: string; category: string }) => void;
   onPatchTask: (task: Task, data: TaskPatch) => void;
@@ -174,6 +193,9 @@ function PlannerDayColumn({
   label,
   isToday,
   weekDays,
+  editingId,
+  onStartEdit,
+  onCloseEdit,
   onOpenDay,
   onAddTask,
   onPatchTask,
@@ -182,19 +204,15 @@ function PlannerDayColumn({
 }: ColumnProps) {
   const { active } = useCategories();
   const [newText, setNewText] = useState('');
-  const [newCat, setNewCat] = useState('');
+  const noCategory = active.length === 0;
 
-  useEffect(() => {
-    if (!newCat && active.length > 0) {
-      const first = active[0];
-      if (first) setNewCat(first.key);
-    }
-  }, [active, newCat]);
-
+  // Ajout rapide : Enter crée la tâche sans horaire, première catégorie active
+  // par défaut — l'édition fine se fait ensuite via le mode édition.
   function submit() {
     const text = newText.trim();
-    if (!text || !newCat) return;
-    onAddTask(data.day, { text, category: newCat });
+    const first = active[0];
+    if (!text || !first) return;
+    onAddTask(data.day, { text, category: first.key });
     setNewText('');
   }
 
@@ -213,73 +231,21 @@ function PlannerDayColumn({
 
       <ul className="planner-tasks">
         {data.tasks.length === 0 && <li className="planner-empty">—</li>}
-        {data.tasks.map((t) => (
-          <li key={t.id} className="planner-task">
-            <div className="planner-task-top">
-              <input
-                type="checkbox"
-                checked={t.done}
-                onChange={() => onPatchTask(t, { done: !t.done })}
-                aria-label={`Marquer « ${t.text} » comme ${t.done ? 'à faire' : 'terminé'}`}
-              />
-              <input
-                type="text"
-                className={`task-text-input${t.done ? ' done' : ''}`}
-                defaultValue={t.text}
-                aria-label="Texte de la tâche"
-                onBlur={(e) => {
-                  const v = e.target.value.trim();
-                  if (v && v !== t.text) onPatchTask(t, { text: v });
-                  else e.target.value = t.text;
-                }}
-              />
-              <button
-                type="button"
-                className="del-btn"
-                onClick={() => onDeleteTask(t.id)}
-                aria-label={`Supprimer « ${t.text} »`}
-              >
-                ×
-              </button>
-            </div>
-            <div className="planner-times">
-              <input
-                type="time"
-                className="task-time-input"
-                defaultValue={t.start_time ?? ''}
-                aria-label={`Heure de début de « ${t.text} »`}
-                onChange={(e) => onPatchTask(t, { start_time: e.target.value || null })}
-              />
-              <input
-                type="time"
-                className="task-time-input"
-                defaultValue={t.end_time ?? ''}
-                aria-label={`Heure de fin de « ${t.text} »`}
-                onChange={(e) => onPatchTask(t, { end_time: e.target.value || null })}
-              />
-            </div>
-            <div className="planner-task-controls">
-              <CategoryDot categoryKey={t.category} />
-              <CategorySelect
-                value={t.category}
-                onChange={(v) => onPatchTask(t, { category: v })}
-                ariaLabel={`Catégorie de « ${t.text} »`}
-              />
-              <select
-                className="planner-move"
-                value={t.day}
-                onChange={(e) => onMoveTask(t, e.target.value)}
-                aria-label={`Déplacer « ${t.text} » vers un autre jour`}
-              >
-                {weekDays.map((wd, i) => (
-                  <option key={wd} value={wd}>
-                    {WEEKDAY_LABELS[i] ?? wd}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </li>
-        ))}
+        {data.tasks.map((t) =>
+          t.id === editingId ? (
+            <PlannerTaskEditor
+              key={t.id}
+              task={t}
+              weekDays={weekDays}
+              onClose={onCloseEdit}
+              onPatch={onPatchTask}
+              onMove={onMoveTask}
+              onDelete={onDeleteTask}
+            />
+          ) : (
+            <PlannerTaskLine key={t.id} task={t} onPatch={onPatchTask} onOpen={onStartEdit} />
+          ),
+        )}
       </ul>
 
       <div className="planner-add">
@@ -287,19 +253,159 @@ function PlannerDayColumn({
           type="text"
           value={newText}
           placeholder="+ tâche…"
+          disabled={noCategory}
           aria-label={`Nouvelle tâche le ${label}`}
+          title={noCategory ? 'Aucune catégorie active — gérez-les dans l’onglet Catégories.' : undefined}
           onChange={(e) => setNewText(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') submit();
           }}
         />
-        <div className="planner-add-row">
-          <CategorySelect value={newCat} onChange={setNewCat} ariaLabel="Catégorie" />
-          <button type="button" className="btn" onClick={submit} disabled={!newCat}>
-            +
-          </button>
-        </div>
       </div>
     </div>
+  );
+}
+
+// --- Mode lecture : une ligne compacte, zéro chrome ---
+// [pastille = toggle done] [créneau mono] [titre ellipsé -> clic = édition]
+function PlannerTaskLine({
+  task,
+  onPatch,
+  onOpen,
+}: {
+  task: Task;
+  onPatch: (task: Task, data: TaskPatch) => void;
+  onOpen: (id: number) => void;
+}) {
+  return (
+    <li className={`planner-task-line${task.done ? ' done' : ''}`}>
+      <button
+        type="button"
+        className="planner-task-toggle"
+        aria-pressed={task.done}
+        aria-label={`Marquer « ${task.text} » comme ${task.done ? 'à faire' : 'terminé'}`}
+        onClick={() => onPatch(task, { done: !task.done })}
+      >
+        <CategoryDot categoryKey={task.category} />
+      </button>
+      <button
+        type="button"
+        className="planner-task-open"
+        title={task.text}
+        aria-label={`Modifier « ${task.text} »`}
+        onClick={() => onOpen(task.id)}
+      >
+        <span className="planner-task-slot">{formatSlot(task)}</span>
+        <span className="planner-task-title">{task.text}</span>
+      </button>
+    </li>
+  );
+}
+
+// --- Mode édition : carte complète, une seule ouverte à la fois ---
+// Enter valide, Escape annule (texte non commité), clic hors de la carte ferme.
+interface EditorProps {
+  task: Task;
+  weekDays: string[];
+  onClose: () => void;
+  onPatch: (task: Task, data: TaskPatch) => void;
+  onMove: (task: Task, day: string) => void;
+  onDelete: (id: number) => void;
+}
+
+function PlannerTaskEditor({ task, weekDays, onClose, onPatch, onMove, onDelete }: EditorProps) {
+  const cardRef = useRef<HTMLLIElement | null>(null);
+  const textRef = useRef<HTMLInputElement | null>(null);
+
+  function commitText() {
+    const v = textRef.current?.value.trim();
+    if (v && v !== task.text) onPatch(task, { text: v });
+  }
+
+  // Clic hors de la carte -> commit du texte en cours puis fermeture.
+  useEffect(() => {
+    function onDocMouseDown(e: MouseEvent) {
+      const card = cardRef.current;
+      if (!card || !(e.target instanceof Node) || card.contains(e.target)) return;
+      const v = textRef.current?.value.trim();
+      if (v && v !== task.text) onPatch(task, { text: v });
+      onClose();
+    }
+    document.addEventListener('mousedown', onDocMouseDown);
+    return () => document.removeEventListener('mousedown', onDocMouseDown);
+  }, [task, onPatch, onClose]);
+
+  return (
+    <li
+      className="planner-task-edit"
+      ref={cardRef}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          commitText();
+          onClose();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          onClose();
+        }
+      }}
+    >
+      <input
+        ref={textRef}
+        type="text"
+        defaultValue={task.text}
+        autoFocus
+        aria-label="Texte de la tâche"
+        onBlur={commitText}
+      />
+      <div className="planner-edit-times">
+        <input
+          type="time"
+          defaultValue={task.start_time ?? ''}
+          aria-label={`Heure de début de « ${task.text} »`}
+          onChange={(e) => onPatch(task, { start_time: e.target.value || null })}
+        />
+        <span className="planner-edit-dash" aria-hidden="true">
+          –
+        </span>
+        <input
+          type="time"
+          defaultValue={task.end_time ?? ''}
+          aria-label={`Heure de fin de « ${task.text} »`}
+          onChange={(e) => onPatch(task, { end_time: e.target.value || null })}
+        />
+      </div>
+      <CategorySelect
+        value={task.category}
+        onChange={(v) => onPatch(task, { category: v })}
+        ariaLabel={`Catégorie de « ${task.text} »`}
+      />
+      <select
+        value={task.day}
+        onChange={(e) => onMove(task, e.target.value)}
+        aria-label={`Déplacer « ${task.text} » vers un autre jour`}
+      >
+        {weekDays.map((wd, i) => (
+          <option key={wd} value={wd}>
+            {WEEKDAY_LABELS[i] ?? wd}
+          </option>
+        ))}
+      </select>
+      <div className="planner-edit-actions">
+        <button type="button" className="btn del-danger" onClick={() => onDelete(task.id)}>
+          Suppr.
+        </button>
+        <button
+          type="button"
+          className="btn primary"
+          onClick={() => {
+            commitText();
+            onClose();
+          }}
+        >
+          OK
+        </button>
+      </div>
+    </li>
   );
 }
