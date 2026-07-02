@@ -25,6 +25,9 @@ function ensureColumn(table: string, column: string, ddl: string): void {
 }
 ensureColumn('tasks', 'start_time', 'start_time TEXT');
 ensureColumn('tasks', 'end_time', 'end_time TEXT');
+// Planning type variable selon le jour de la semaine (bases créées avant son
+// introduction) : NULL sur les items existants => comportement inchangé.
+ensureColumn('template_items', 'day_of_week', 'day_of_week INTEGER');
 
 // Anti-respawn rétroactif : les jours qui ont déjà des tâches (créés avant
 // l'introduction du planning type) sont marqués "déjà appliqués" une seule

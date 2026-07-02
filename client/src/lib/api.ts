@@ -7,6 +7,7 @@ import type {
   Goal,
   HistoryResponse,
   Period,
+  PlannerWeek,
   Task,
   TemplateItem,
   WeekAggregation,
@@ -72,6 +73,7 @@ export const api = {
       done: boolean;
       text: string;
       category: Category;
+      day: string;
       start_time: string | null;
       end_time: string | null;
     }>,
@@ -85,6 +87,9 @@ export const api = {
 
   // --- Semaine ---
   getWeek: (startDate: string) => request<WeekAggregation>(`/week/${startDate}`),
+
+  // --- Planning (grille 7 jours, lecture seule côté matérialisation) ---
+  getPlanner: (startDate: string) => request<PlannerWeek>(`/planner/${startDate}`),
 
   // --- Bilan ---
   saveReview: (date: string, data: { advanced: string; dragged: string }) =>
@@ -133,6 +138,7 @@ export const api = {
     category: Category;
     start_time?: string | null;
     end_time?: string | null;
+    day_of_week?: number | null;
   }) => request<TemplateItem>('/template', { method: 'POST', ...body(data) }),
   updateTemplateItem: (
     id: number,
@@ -141,6 +147,7 @@ export const api = {
       category: Category;
       start_time: string | null;
       end_time: string | null;
+      day_of_week: number | null;
       sort_order: number;
       is_active: boolean;
     }>,

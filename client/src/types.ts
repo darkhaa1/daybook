@@ -63,9 +63,23 @@ export interface TemplateItem {
   category: Category;
   start_time: string | null;
   end_time: string | null;
+  // 0=lundi..6=dimanche ; null = tous les jours.
+  day_of_week: number | null;
   sort_order: number;
   is_active: boolean;
   created_at: string;
+}
+
+export interface PlannerDay {
+  day: string;
+  tasks: Task[];
+  // false = jour non encore "ouvert" (template pas matérialisé).
+  isApplied: boolean;
+}
+
+export interface PlannerWeek {
+  start: string;
+  days: PlannerDay[];
 }
 
 export interface CategoryDef {

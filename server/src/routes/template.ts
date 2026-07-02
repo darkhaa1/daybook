@@ -14,14 +14,29 @@ const listAll = db.prepare(`SELECT * FROM template_items ${ORDER}`);
 const getById = db.prepare('SELECT * FROM template_items WHERE id = ?');
 const maxSortOrder = db.prepare('SELECT MAX(sort_order) as m FROM template_items');
 const insertItem = db.prepare(
-  `INSERT INTO template_items (text, category, start_time, end_time, sort_order, is_active, created_at)
-   VALUES (@text, @category, @start_time, @end_time, @sort_order, 1, @created_at)`,
+  `INSERT INTO template_items (text, category, start_time, end_time, day_of_week, sort_order, is_active, created_at)
+   VALUES (@text, @category, @start_time, @end_time, @day_of_week, @sort_order, 1, @created_at)`,
 );
 const deleteItem = db.prepare('DELETE FROM template_items WHERE id = ?');
 
 function validateCategory(value: unknown): string {
   if (typeof value !== 'string' || !isActiveCategoryKey(value)) {
     throw badRequest(`Catégorie invalide ou inactive: ${String(value)}`);
+  }
+  return value;
+}
+
+// Lit day_of_week : undefined si absent, null si explicitement vidé (= tous
+// les jours), sinon un entier 0=lundi..6=dimanche.
+function readOptionalDayOfWeek(
+  body: Record<string, unknown>,
+  key: string,
+): number | null | undefined {
+  if (!(key in body) || body[key] === undefined) return undefined;
+  const value = body[key];
+  if (value === null) return null;
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > 6) {
+    throw badRequest(`${key} invalide (entier 0-6 ou null attendu) : ${String(value)}`);
   }
   return value;
 }
@@ -33,7 +48,7 @@ template.get('/', (c) => {
   return c.json(rows.map(toTemplateItem));
 });
 
-// POST /api/template -> { text, category, start_time?, end_time? }
+// POST /api/template -> { text, category, start_time?, end_time?, day_of_week? }
 template.post('/', async (c) => {
   const body = await readJson(c);
   const text = requireString(body, 'text');
@@ -41,15 +56,24 @@ template.post('/', async (c) => {
   const start_time = readOptionalTime(body, 'start_time') ?? null;
   const end_time = readOptionalTime(body, 'end_time') ?? null;
   assertTimeOrder(start_time, end_time);
+  const day_of_week = readOptionalDayOfWeek(body, 'day_of_week') ?? null;
 
   const sort_order = ((maxSortOrder.get() as { m: number | null }).m ?? -1) + 1;
   const created_at = new Date().toISOString();
-  const info = insertItem.run({ text, category, start_time, end_time, sort_order, created_at });
+  const info = insertItem.run({
+    text,
+    category,
+    start_time,
+    end_time,
+    day_of_week,
+    sort_order,
+    created_at,
+  });
   const row = getById.get(info.lastInsertRowid) as TemplateItemRow;
   return c.json(toTemplateItem(row), 201);
 });
 
-// PATCH /api/template/:id -> { text?, category?, start_time?, end_time?, sort_order?, is_active? }
+// PATCH /api/template/:id -> { text?, category?, start_time?, end_time?, day_of_week?, sort_order?, is_active? }
 template.patch('/:id', async (c) => {
   const id = parseId(c.req.param('id'));
   const existing = getById.get(id) as TemplateItemRow | undefined;
@@ -82,6 +106,12 @@ template.patch('/:id', async (c) => {
       sets.push('end_time = @end_time');
       params['end_time'] = newEnd;
     }
+  }
+
+  if ('day_of_week' in body && body['day_of_week'] !== undefined) {
+    // present & non-undefined => renvoie null (tous les jours) ou l'entier 0-6.
+    sets.push('day_of_week = @day_of_week');
+    params['day_of_week'] = readOptionalDayOfWeek(body, 'day_of_week') ?? null;
   }
 
   if ('sort_order' in body && body['sort_order'] !== undefined) {

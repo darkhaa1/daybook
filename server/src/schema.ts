@@ -56,15 +56,17 @@ CREATE TABLE IF NOT EXISTS categories (
 
 -- Planning type récurrent, éditable en base (jamais codé en dur). "category"
 -- référence categories.key par la même convention que tasks/focus_sessions/goals.
+-- day_of_week : 0=lundi..6=dimanche ; NULL = s'applique tous les jours.
 CREATE TABLE IF NOT EXISTS template_items (
-  id         INTEGER PRIMARY KEY AUTOINCREMENT,
-  text       TEXT    NOT NULL,
-  category   TEXT    NOT NULL,
-  start_time TEXT,
-  end_time   TEXT,
-  sort_order INTEGER NOT NULL DEFAULT 0,
-  is_active  INTEGER NOT NULL DEFAULT 1,
-  created_at TEXT    NOT NULL
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  text        TEXT    NOT NULL,
+  category    TEXT    NOT NULL,
+  start_time  TEXT,
+  end_time    TEXT,
+  day_of_week INTEGER,
+  sort_order  INTEGER NOT NULL DEFAULT 0,
+  is_active   INTEGER NOT NULL DEFAULT 1,
+  created_at  TEXT    NOT NULL
 );
 
 -- Garde-fou anti-respawn : un jour n'est matérialisé depuis le template

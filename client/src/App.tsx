@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { TodayView } from './components/TodayView.tsx';
+import { PlannerView } from './components/PlannerView.tsx';
 import { WeekView } from './components/WeekView.tsx';
 import { GoalsView } from './components/GoalsView.tsx';
 import { CategoriesView } from './components/CategoriesView.tsx';
@@ -7,17 +8,18 @@ import { HistoryView } from './components/HistoryView.tsx';
 import { TemplateView } from './components/TemplateView.tsx';
 import { todayISO, formatBlueprint } from './lib/date.ts';
 
-type Tab = 'today' | 'week' | 'goals' | 'categories' | 'history' | 'template';
+type Tab = 'today' | 'planning' | 'week' | 'goals' | 'categories' | 'history' | 'template';
 
-const TAB_IDS: Tab[] = ['today', 'week', 'goals', 'categories', 'history', 'template'];
+const TAB_IDS: Tab[] = ['today', 'planning', 'week', 'goals', 'categories', 'history', 'template'];
 
 const TABS: { id: Tab; label: string; code: string }[] = [
   { id: 'today', label: 'Aujourd’hui', code: 'A' },
-  { id: 'week', label: 'Semaine', code: 'B' },
-  { id: 'goals', label: 'Buts', code: 'C' },
-  { id: 'categories', label: 'Catégories', code: 'D' },
-  { id: 'history', label: 'Historique', code: 'E' },
-  { id: 'template', label: 'Planning type', code: 'F' },
+  { id: 'planning', label: 'Planning', code: 'B' },
+  { id: 'week', label: 'Semaine', code: 'C' },
+  { id: 'goals', label: 'Buts', code: 'D' },
+  { id: 'categories', label: 'Catégories', code: 'E' },
+  { id: 'history', label: 'Historique', code: 'F' },
+  { id: 'template', label: 'Planning type', code: 'G' },
 ];
 
 const STORAGE_KEY = 'console.activeTab';
@@ -82,6 +84,7 @@ export function App() {
         </nav>
 
         {tab === 'today' && <TodayView day={day} />}
+        {tab === 'planning' && <PlannerView referenceDay={day} />}
         {tab === 'week' && <WeekView referenceDay={day} />}
         {tab === 'goals' && <GoalsView />}
         {tab === 'categories' && <CategoriesView />}

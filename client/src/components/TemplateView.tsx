@@ -4,7 +4,11 @@ import { api, ApiError } from '../lib/api.ts';
 import { useCategories } from '../context/CategoriesContext.tsx';
 import { CategorySelect } from './CategorySelect.tsx';
 import { CategoryDot } from './CategoryDot.tsx';
-import { todayISO } from '../lib/date.ts';
+import { DayOfWeekSelect } from './DayOfWeekSelect.tsx';
+import { todayISO, WEEKDAY_LABELS } from '../lib/date.ts';
+
+// Ordre d'affichage des sections : "Tous les jours" puis lundi..dimanche.
+const GROUP_ORDER: (number | null)[] = [null, 0, 1, 2, 3, 4, 5, 6];
 
 export function TemplateView() {
   const { active } = useCategories();
@@ -18,6 +22,7 @@ export function TemplateView() {
   const [category, setCategory] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
+  const [dayOfWeek, setDayOfWeek] = useState<number | null>(null);
 
   useEffect(() => {
     if (!category && active.length > 0) {
@@ -26,7 +31,13 @@ export function TemplateView() {
     }
   }, [active, category]);
 
-  const sorted = [...items].sort((a, b) => a.sort_order - b.sort_order);
+  // Items triés par sort_order, puis regroupés par jour (null = tous les jours).
+  const sortedAll = [...items].sort((a, b) => a.sort_order - b.sort_order);
+  const groups = GROUP_ORDER.map((key) => ({
+    key,
+    label: key === null ? 'Tous les jours' : WEEKDAY_LABELS[key],
+    items: sortedAll.filter((it) => it.day_of_week === key),
+  })).filter((g) => g.items.length > 0);
 
   async function load() {
     setLoading(true);
@@ -54,6 +65,7 @@ export function TemplateView() {
         category,
         start_time: startTime || null,
         end_time: endTime || null,
+        day_of_week: dayOfWeek,
       });
       setText('');
       setStartTime('');
@@ -72,6 +84,7 @@ export function TemplateView() {
       category: string;
       start_time: string | null;
       end_time: string | null;
+      day_of_week: number | null;
       is_active: boolean;
       sort_order: number;
     }>,
@@ -95,11 +108,13 @@ export function TemplateView() {
     }
   }
 
-  async function move(index: number, direction: -1 | 1) {
+  // Réordonne à l'intérieur d'un même groupe (jour) en échangeant les sort_order
+  // de deux blocs adjacents.
+  async function move(groupItems: TemplateItem[], index: number, direction: -1 | 1) {
     const j = index + direction;
-    if (j < 0 || j >= sorted.length) return;
-    const a = sorted[index];
-    const b = sorted[j];
+    if (j < 0 || j >= groupItems.length) return;
+    const a = groupItems[index];
+    const b = groupItems[j];
     if (!a || !b) return;
     try {
       await Promise.all([
@@ -154,6 +169,7 @@ export function TemplateView() {
             }}
           />
           <CategorySelect value={category} onChange={setCategory} ariaLabel="Catégorie" />
+          <DayOfWeekSelect value={dayOfWeek} onChange={setDayOfWeek} ariaLabel="Jour d'application" />
           <button type="button" className="btn primary" onClick={addItem} disabled={!category}>
             + Ajouter
           </button>
@@ -162,88 +178,101 @@ export function TemplateView() {
 
       <section className="panel">
         <div className="template-header-row">
-          <p className="panel-title">Planning type ({sorted.length})</p>
+          <p className="panel-title">Planning type ({sortedAll.length})</p>
           <button type="button" className="btn primary" onClick={reapply}>
             Réappliquer au jour courant
           </button>
         </div>
         <p className="chart-caption">
-          Modifier le planning type n'affecte pas les jours déjà ouverts — utilisez «&nbsp;Réappliquer&nbsp;»
-          pour pousser les changements sur aujourd'hui.
+          Un bloc «&nbsp;Tous les jours&nbsp;» apparaît chaque jour ; un bloc daté n'apparaît qu'à
+          l'ouverture du jour correspondant. Modifier le planning type n'affecte pas les jours déjà
+          ouverts — utilisez «&nbsp;Réappliquer&nbsp;» pour pousser les changements sur aujourd'hui.
         </p>
         {applyMsg && <p className="muted-note">{applyMsg}</p>}
 
         {loading && <p className="muted-note">Chargement…</p>}
-        {!loading && sorted.length === 0 && (
+        {!loading && sortedAll.length === 0 && (
           <p className="muted-note">Aucun bloc — ajoutez-en un ci-dessus.</p>
         )}
 
-        <ul className="template-list">
-          {sorted.map((item, i) => (
-            <li key={item.id} className={item.is_active ? '' : 'inactive'}>
-              <input
-                type="checkbox"
-                checked={item.is_active}
-                aria-label={`${item.is_active ? 'Désactiver' : 'Activer'} « ${item.text} »`}
-                onChange={() => patch(item, { is_active: !item.is_active })}
-              />
-              <input
-                type="time"
-                className="task-time-input"
-                defaultValue={item.start_time ?? ''}
-                aria-label={`Heure de début de « ${item.text} »`}
-                onChange={(e) => patch(item, { start_time: e.target.value || null })}
-              />
-              <input
-                type="time"
-                className="task-time-input"
-                defaultValue={item.end_time ?? ''}
-                aria-label={`Heure de fin de « ${item.text} »`}
-                onChange={(e) => patch(item, { end_time: e.target.value || null })}
-              />
-              <input
-                type="text"
-                className="template-text-input"
-                defaultValue={item.text}
-                aria-label={`Intitulé de « ${item.text} »`}
-                onBlur={(e) => {
-                  const v = e.target.value.trim();
-                  if (v && v !== item.text) patch(item, { text: v });
-                  else e.target.value = item.text;
-                }}
-              />
-              <CategoryDot categoryKey={item.category} />
-              <CategorySelect
-                value={item.category}
-                onChange={(v) => patch(item, { category: v })}
-                ariaLabel={`Catégorie de « ${item.text} »`}
-              />
-              <span className="reorder-btns">
-                <button
-                  type="button"
-                  className="btn"
-                  disabled={i === 0}
-                  onClick={() => move(i, -1)}
-                  aria-label={`Monter ${item.text}`}
-                >
-                  ↑
-                </button>
-                <button
-                  type="button"
-                  className="btn"
-                  disabled={i === sorted.length - 1}
-                  onClick={() => move(i, 1)}
-                  aria-label={`Descendre ${item.text}`}
-                >
-                  ↓
-                </button>
-              </span>
-              <button type="button" className="btn del-danger" onClick={() => remove(item)}>
-                Supprimer
-              </button>
-            </li>
-          ))}
-        </ul>
+        {groups.map((group) => (
+          <div key={group.key === null ? 'all' : group.key} className="template-group">
+            <p className="template-group-title">
+              {group.label} <span className="muted-count">· {group.items.length}</span>
+            </p>
+            <ul className="template-list">
+              {group.items.map((item, i) => (
+                <li key={item.id} className={item.is_active ? '' : 'inactive'}>
+                  <input
+                    type="checkbox"
+                    checked={item.is_active}
+                    aria-label={`${item.is_active ? 'Désactiver' : 'Activer'} « ${item.text} »`}
+                    onChange={() => patch(item, { is_active: !item.is_active })}
+                  />
+                  <input
+                    type="time"
+                    className="task-time-input"
+                    defaultValue={item.start_time ?? ''}
+                    aria-label={`Heure de début de « ${item.text} »`}
+                    onChange={(e) => patch(item, { start_time: e.target.value || null })}
+                  />
+                  <input
+                    type="time"
+                    className="task-time-input"
+                    defaultValue={item.end_time ?? ''}
+                    aria-label={`Heure de fin de « ${item.text} »`}
+                    onChange={(e) => patch(item, { end_time: e.target.value || null })}
+                  />
+                  <input
+                    type="text"
+                    className="template-text-input"
+                    defaultValue={item.text}
+                    aria-label={`Intitulé de « ${item.text} »`}
+                    onBlur={(e) => {
+                      const v = e.target.value.trim();
+                      if (v && v !== item.text) patch(item, { text: v });
+                      else e.target.value = item.text;
+                    }}
+                  />
+                  <CategoryDot categoryKey={item.category} />
+                  <CategorySelect
+                    value={item.category}
+                    onChange={(v) => patch(item, { category: v })}
+                    ariaLabel={`Catégorie de « ${item.text} »`}
+                  />
+                  <DayOfWeekSelect
+                    value={item.day_of_week}
+                    onChange={(v) => patch(item, { day_of_week: v })}
+                    ariaLabel={`Jour d'application de « ${item.text} »`}
+                  />
+                  <span className="reorder-btns">
+                    <button
+                      type="button"
+                      className="btn"
+                      disabled={i === 0}
+                      onClick={() => move(group.items, i, -1)}
+                      aria-label={`Monter ${item.text}`}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className="btn"
+                      disabled={i === group.items.length - 1}
+                      onClick={() => move(group.items, i, 1)}
+                      aria-label={`Descendre ${item.text}`}
+                    >
+                      ↓
+                    </button>
+                  </span>
+                  <button type="button" className="btn del-danger" onClick={() => remove(item)}>
+                    Supprimer
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </section>
     </>
   );

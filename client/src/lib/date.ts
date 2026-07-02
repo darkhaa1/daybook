@@ -8,6 +8,28 @@ export function todayISO(): string {
   return `${y}-${m}-${day}`;
 }
 
+// Noms des jours, convention 0=lundi..6=dimanche (aligne day_of_week du back).
+export const WEEKDAY_LABELS = [
+  'Lundi',
+  'Mardi',
+  'Mercredi',
+  'Jeudi',
+  'Vendredi',
+  'Samedi',
+  'Dimanche',
+] as const;
+
+// Décale une date ISO de `days` jours (calcul en heure locale, cohérent avec
+// mondayOf / todayISO).
+export function addDays(isoDate: string, days: number): string {
+  const [y, m, d] = isoDate.split('-').map(Number) as [number, number, number];
+  const dt = new Date(y, m - 1, d + days);
+  const yy = dt.getFullYear();
+  const mm = String(dt.getMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getDate()).padStart(2, '0');
+  return `${yy}-${mm}-${dd}`;
+}
+
 // Lundi de la semaine contenant `isoDate` (semaine lundi -> dimanche).
 export function mondayOf(isoDate: string): string {
   const [y, m, d] = isoDate.split('-').map(Number) as [number, number, number];
@@ -31,6 +53,15 @@ export function formatShort(isoDate: string): string {
   const [y, m, d] = isoDate.split('-').map(Number) as [number, number, number];
   return new Date(y, m - 1, d).toLocaleDateString('fr-FR', {
     weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
+}
+
+// Format court sans jour de la semaine "1 juil." (en-têtes de colonne planning).
+export function formatDayMonth(isoDate: string): string {
+  const [y, m, d] = isoDate.split('-').map(Number) as [number, number, number];
+  return new Date(y, m - 1, d).toLocaleDateString('fr-FR', {
     day: 'numeric',
     month: 'short',
   });

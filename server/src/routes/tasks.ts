@@ -58,6 +58,12 @@ tasks.patch('/:id', async (c) => {
     sets.push('category = @category');
     params['category'] = validateCategory(body['category']);
   }
+  // Déplacer une tâche vers un autre jour (planner). N'entraîne aucune
+  // matérialisation du template sur la date cible.
+  if ('day' in body && body['day'] !== undefined) {
+    sets.push('day = @day');
+    params['day'] = parseDate(requireString(body, 'day'));
+  }
 
   const startProvided = 'start_time' in body && body['start_time'] !== undefined;
   const endProvided = 'end_time' in body && body['end_time'] !== undefined;
@@ -76,7 +82,7 @@ tasks.patch('/:id', async (c) => {
   }
 
   if (sets.length === 0) {
-    throw badRequest('Aucun champ à mettre à jour (done, text, category, start_time, end_time)');
+    throw badRequest('Aucun champ à mettre à jour (done, text, category, day, start_time, end_time)');
   }
 
   db.prepare(`UPDATE tasks SET ${sets.join(', ')} WHERE id = @id`).run(params);

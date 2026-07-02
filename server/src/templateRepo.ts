@@ -1,7 +1,14 @@
 import { db } from './db.ts';
+import { weekdayIndex } from './date.ts';
 import type { TemplateItemRow } from './models.ts';
 
-const activeItemsStmt = db.prepare('SELECT * FROM template_items WHERE is_active = 1 ORDER BY sort_order');
+// Blocs actifs applicables à un jour donné : ceux valables tous les jours
+// (day_of_week IS NULL) OU ceux ciblant précisément le jour de la semaine.
+const activeItemsForDayStmt = db.prepare(
+  `SELECT * FROM template_items
+   WHERE is_active = 1 AND (day_of_week IS NULL OR day_of_week = @dow)
+   ORDER BY sort_order`,
+);
 const insertTaskFromTemplate = db.prepare(
   `INSERT INTO tasks (text, category, done, day, created_at, start_time, end_time)
    VALUES (@text, @category, 0, @day, @created_at, @start_time, @end_time)`,
@@ -13,10 +20,11 @@ const markDayApplied = db.prepare(
 
 // Ajout simple des blocs actifs du template comme tâches du jour (pas de
 // vérification d'idempotence ici) + marque le jour appliqué s'il ne l'est
-// pas déjà. Utilisé par le "Réappliquer" explicite ET par la matérialisation
+// pas déjà. Ne retient que les blocs valables pour le jour de la semaine de
+// `day`. Utilisé par le "Réappliquer" explicite ET par la matérialisation
 // automatique ci-dessous.
 export function applyTemplateToDay(day: string): number {
-  const items = activeItemsStmt.all() as TemplateItemRow[];
+  const items = activeItemsForDayStmt.all({ dow: weekdayIndex(day) }) as TemplateItemRow[];
   const created_at = new Date().toISOString();
 
   const run = db.transaction((rows: TemplateItemRow[]) => {
@@ -44,4 +52,11 @@ export function materializeDayIfNeeded(day: string): boolean {
   if (isDayApplied.get(day)) return false;
   applyTemplateToDay(day);
   return true;
+}
+
+// Le jour a-t-il déjà été matérialisé depuis le template ? Lecture seule —
+// utilisé par le planner pour signaler les jours "non ouverts" sans les
+// matérialiser.
+export function isDayMaterialized(day: string): boolean {
+  return isDayApplied.get(day) !== undefined;
 }

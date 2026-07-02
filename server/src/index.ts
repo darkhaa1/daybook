@@ -11,6 +11,7 @@ import { goals } from './routes/goals.ts';
 import { categories } from './routes/categories.ts';
 import { history } from './routes/history.ts';
 import { template } from './routes/template.ts';
+import { planner } from './routes/planner.ts';
 
 const app = new Hono();
 
@@ -27,6 +28,7 @@ api.route('/goals', goals);
 api.route('/categories', categories);
 api.route('/history', history);
 api.route('/template', template);
+api.route('/planner', planner);
 
 // 404 JSON stable pour toute route /api inconnue.
 api.all('/*', () => {

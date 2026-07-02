@@ -77,7 +77,7 @@ body {
 }
 
 .wrap {
-  max-width: 980px;
+  max-width: 1280px;
   margin: 0 auto;
 }
 
@@ -778,6 +778,27 @@ textarea {
   flex-wrap: wrap;
 }
 
+.template-group {
+  margin-bottom: 18px;
+}
+
+.template-group:last-child {
+  margin-bottom: 0;
+}
+
+.template-group-title {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin: 0 0 6px;
+}
+
+.muted-count {
+  color: var(--muted);
+}
+
 .template-list {
   list-style: none;
   margin: 0;
@@ -927,6 +948,201 @@ input[type='color'] {
   display: flex;
   gap: 4px;
   margin-left: auto;
+}
+
+/* Onglet Planning (grille 7 jours) */
+.planner-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.planner-week-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  color: var(--muted);
+  min-width: 160px;
+}
+
+.planner-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 900px) {
+  .planner-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.planner-day {
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.planner-day.today {
+  border-color: var(--amber);
+}
+
+.planner-day-head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  background: var(--panel);
+  border: none;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.planner-day-head:hover {
+  background: rgba(231, 162, 58, 0.12);
+}
+
+.planner-day.today .planner-day-head {
+  color: var(--amber);
+}
+
+.planner-day-name {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.planner-day-date {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.planner-badge {
+  align-self: flex-start;
+  margin-top: 3px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid var(--line-soft);
+  border-radius: 2px;
+  padding: 1px 5px;
+}
+
+.planner-tasks {
+  list-style: none;
+  margin: 0;
+  padding: 8px;
+  flex: 1;
+}
+
+.planner-empty {
+  color: var(--muted);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  text-align: center;
+  padding: 8px 0;
+}
+
+.planner-task {
+  border: 1px solid var(--line-soft);
+  border-radius: 2px;
+  padding: 7px 8px;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.planner-task:last-child {
+  margin-bottom: 0;
+}
+
+.planner-task-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.planner-task-top input[type='checkbox'] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--amber);
+  flex-shrink: 0;
+}
+
+.planner-task-top .task-text-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  padding: 5px 7px;
+}
+
+.planner-times {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.planner-times .task-time-input {
+  width: 78px;
+}
+
+.planner-task-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.planner-task-controls select {
+  flex: 1;
+  min-width: 0;
+}
+
+.planner-move {
+  width: 100%;
+}
+
+.planner-add {
+  border-top: 1px solid var(--line-soft);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.planner-add input[type='text'] {
+  width: 100%;
+  min-width: 0;
+  font-size: 13px;
+  padding: 5px 7px;
+}
+
+.planner-add-row {
+  display: flex;
+  gap: 6px;
+}
+
+.planner-add-row select {
+  flex: 1;
+  min-width: 0;
+}
+
+.planner-add-row .btn {
+  padding: 5px 12px;
+  flex-shrink: 0;
 }
 
 /* Cartouche */

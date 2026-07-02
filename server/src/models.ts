@@ -44,6 +44,7 @@ export interface TemplateItemRow {
   category: string;
   start_time: string | null;
   end_time: string | null;
+  day_of_week: number | null;
   sort_order: number;
   is_active: number;
   created_at: string;
@@ -105,6 +106,7 @@ export interface TemplateItem {
   category: Category;
   start_time: string | null;
   end_time: string | null;
+  day_of_week: number | null;
   sort_order: number;
   is_active: boolean;
   created_at: string;
@@ -172,6 +174,7 @@ export function toTemplateItem(row: TemplateItemRow): TemplateItem {
     category: row.category as Category,
     start_time: row.start_time,
     end_time: row.end_time,
+    day_of_week: row.day_of_week,
     sort_order: row.sort_order,
     is_active: row.is_active === 1,
     created_at: row.created_at,
