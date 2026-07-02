@@ -23,7 +23,6 @@
     "skipLibCheck": true,
     "noEmit": true,
 
-    "baseUrl": ".",
     "paths": {
       "@shared": ["../server/src/shared.ts"]
     }

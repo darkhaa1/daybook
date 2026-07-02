@@ -1,15 +1,15 @@
 {
-  "name": "console-pilotage",
+  "name": "daybook",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Console de pilotage quotidien — mono-utilisateur, privé.",
+  "description": "Daybook — console de pilotage quotidien (mono-utilisateur, privé).",
   "scripts": {
     "dev": "pnpm -r --parallel run dev",
-    "dev:server": "pnpm --filter server dev",
-    "dev:client": "pnpm --filter client dev",
-    "build": "pnpm --filter client build && pnpm --filter server build",
-    "typecheck": "pnpm --filter client typecheck && pnpm --filter server typecheck",
+    "dev:server": "pnpm --filter @daybook/server dev",
+    "dev:client": "pnpm --filter @daybook/client dev",
+    "build": "pnpm --filter @daybook/client build && pnpm --filter @daybook/server build",
+    "typecheck": "pnpm --filter @daybook/client typecheck && pnpm --filter @daybook/server typecheck",
     "start": "node server/dist/index.js"
   },
   "engines": {

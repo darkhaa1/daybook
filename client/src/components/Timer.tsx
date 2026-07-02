@@ -9,14 +9,17 @@ const CIRC = 515.2; // 2πr, r = 82 (identique à la maquette)
 type Mode = 'focus' | 'break';
 
 // Durées réglables, persistées comme préférence d'affichage (même famille que
-// console.activeTab) — les données métier restent en SQLite.
-const KEY_WORK = 'console.timer.workMin';
-const KEY_BREAK = 'console.timer.breakMin';
+// daybook.activeTab) — les données métier restent en SQLite.
+const KEY_WORK = 'daybook.timer.workMin';
+const KEY_BREAK = 'daybook.timer.breakMin';
+// Migration douce depuis l'ancien préfixe (rebranding Daybook).
+const LEGACY_PREFIX = 'console.timer.';
 const MIN_MINUTES = 1;
 const MAX_MINUTES = 180;
 
 function loadMinutes(key: string, fallback: number): number {
-  const v = Number(localStorage.getItem(key) ?? '');
+  const legacy = key.replace('daybook.timer.', LEGACY_PREFIX);
+  const v = Number(localStorage.getItem(key) ?? localStorage.getItem(legacy) ?? '');
   return Number.isInteger(v) && v >= MIN_MINUTES && v <= MAX_MINUTES ? v : fallback;
 }
 

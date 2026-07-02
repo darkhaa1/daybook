@@ -38,7 +38,7 @@ api.all('/*', () => {
 app.route('/api', api);
 
 // --- Front buildé (client/dist), servi depuis la racine ---
-// WorkingDirectory = racine du repo (voir console.service).
+// WorkingDirectory = racine du repo (voir l'unité systemd daybook.service).
 const CLIENT_DIR = './client/dist';
 app.use('/*', serveStatic({ root: CLIENT_DIR }));
 // Fallback SPA : toute route non-API renvoie index.html.
@@ -47,5 +47,5 @@ app.get('/*', serveStatic({ path: `${CLIENT_DIR}/index.html` }));
 const port = Number(process.env.PORT ?? 3001);
 
 serve({ fetch: app.fetch, port }, (info) => {
-  console.log(`[server] console de pilotage en écoute sur http://localhost:${info.port}`);
+  console.log(`[server] daybook en écoute sur http://localhost:${info.port}`);
 });

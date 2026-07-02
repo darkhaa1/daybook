@@ -22,10 +22,12 @@ const TABS: { id: Tab; label: string; code: string }[] = [
   { id: 'template', label: 'Planning type', code: 'G' },
 ];
 
-const STORAGE_KEY = 'console.activeTab';
+const STORAGE_KEY = 'daybook.activeTab';
+// Migration douce depuis l'ancien préfixe (rebranding Daybook).
+const LEGACY_STORAGE_KEY = 'console.activeTab';
 
 function loadTab(): Tab {
-  const saved = localStorage.getItem(STORAGE_KEY);
+  const saved = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
   return (TAB_IDS as string[]).includes(saved ?? '') ? (saved as Tab) : 'today';
 }
 
@@ -62,7 +64,7 @@ export function App() {
       <div className="wrap">
         <header>
           <div>
-            <div className="eyebrow">Console de pilotage — Darkhaa</div>
+            <div className="eyebrow">Daybook — console de pilotage</div>
             <h1>Planche du jour</h1>
           </div>
           <Clock day={day} />
@@ -92,7 +94,7 @@ export function App() {
         {tab === 'template' && <TemplateView />}
 
         <div className="titleblock">
-          <div className="tb-head">PLANIFICATION QUOTIDIENNE</div>
+          <div className="tb-head">DAYBOOK — PLANCHE QUOTIDIENNE</div>
           <div className="tb-row">
             <span>Dessiné par</span>
             <span>Darkhaa</span>
