@@ -375,22 +375,24 @@ function PlannerTaskEditor({ task, weekDays, onClose, onPatch, onMove, onDelete 
           onChange={(e) => onPatch(task, { end_time: e.target.value || null })}
         />
       </div>
-      <CategorySelect
-        value={task.category}
-        onChange={(v) => onPatch(task, { category: v })}
-        ariaLabel={`Catégorie de « ${task.text} »`}
-      />
-      <select
-        value={task.day}
-        onChange={(e) => onMove(task, e.target.value)}
-        aria-label={`Déplacer « ${task.text} » vers un autre jour`}
-      >
-        {weekDays.map((wd, i) => (
-          <option key={wd} value={wd}>
-            {WEEKDAY_LABELS[i] ?? wd}
-          </option>
-        ))}
-      </select>
+      <div className="planner-edit-row">
+        <CategorySelect
+          value={task.category}
+          onChange={(v) => onPatch(task, { category: v })}
+          ariaLabel={`Catégorie de « ${task.text} »`}
+        />
+        <select
+          value={task.day}
+          onChange={(e) => onMove(task, e.target.value)}
+          aria-label={`Déplacer « ${task.text} » vers un autre jour`}
+        >
+          {weekDays.map((wd, i) => (
+            <option key={wd} value={wd}>
+              {WEEKDAY_LABELS[i] ?? wd}
+            </option>
+          ))}
+        </select>
+      </div>
       <div className="planner-edit-actions">
         <button type="button" className="btn del-danger" onClick={() => onDelete(task.id)}>
           Suppr.
